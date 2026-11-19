@@ -1,6 +1,6 @@
 {
   "name": "mahjong-soul-twitch",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Twitch integration for Mahjong Soul: chat announcements, OBS overlay, chat commands, auto predictions, and an event feed other apps can use.",
   "type": "module",
   "private": true,

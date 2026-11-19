@@ -15,6 +15,7 @@ const prep = (t: Template) => {
   if (!p) { p = prepare(Buffer.from(t.data, 'base64'), t.tw, t.th); prepared.set(t.id, p); }
   return p;
 };
+const keyLabel = (k: string) => KEYS.find((x) => x.key === k)?.label ?? k;
 
 // ---------------- Event targets (Twitch app / Lovense app) ----------------
 class Target {
@@ -38,29 +39,33 @@ function syncTargets() {
   targets = want.map((u) => new Target(u));
 }
 
-const log: { ts: number; key: string; name: string; score: number | null; manual: boolean }[] = [];
-function fire(key: string, name: string, score: number | null, manual = false) {
+interface Frame { bmp: Buffer; gray: Gray; ts: number }
+interface Detection { ts: number; key: string; name: string; score: number | null; manual: boolean; frame: Frame | null }
+const detections: Detection[] = [];
+
+function fire(key: string, name: string, score: number | null, frame: Frame | null, manual = false) {
   const ev = toGameEvent(key);
   if (!ev) return;
   const text = JSON.stringify(ev);
   targets.forEach((t) => t.send(text));
-  log.unshift({ ts: Date.now(), key, name, score, manual });
-  log.length = Math.min(log.length, 40);
-  console.log(`[detect] ${key} (${name})${score !== null ? ' score ' + score.toFixed(2) : ' (manual)'}`);
+  detections.unshift({ ts: Date.now(), key, name, score, manual, frame });
+  detections.length = Math.min(detections.length, 25);
+  console.log(`[detect] ${keyLabel(key)} (${name})${score !== null ? ' score ' + score.toFixed(2) : ' (test)'}`);
 }
 
-// ---------------- Capture loop ----------------
+// ---------------- Capture + detection loop ----------------
 let source: Source | null = null;
 let sourceKey = '';
 let status = 'starting';
-let latest: { bmp: Buffer; gray: Gray; ts: number } | null = null;
-const BUFFER_FRAMES = 40;
-let ring: { bmp: Buffer; gray: Gray; ts: number }[] = [];
-let frozen: { bmp: Buffer; gray: Gray; ts: number }[] | null = null;
+let latest: Frame | null = null;
+let ring: Frame[] = [];
+let frozen: Frame[] | null = null;
 const scores = new Map<string, number>();
-const above = new Set<string>();
+const streak = new Map<string, number>();
+const latched = new Set<string>(); // fired; waiting for the score to drop before it can fire again
 const lastFired = new Map<string, number>();
 let frameTimes: number[] = [];
+let analysisMs = 0;
 
 function syncSource() {
   const key = config.source === 'obs' ? `obs|${config.obs.url}|${config.obs.password}|${config.obs.sourceName}` : `win|${config.window.processName}`;
@@ -74,21 +79,29 @@ function syncSource() {
   } catch (e) { source = null; status = (e as Error).message; }
 }
 
-function detect(frame: Gray) {
-  if (!config.detection.enabled) return;
+function detect(frame: Frame) {
+  const d = config.detection;
+  const started = performance.now();
   const now = Date.now();
   for (const t of templates) {
     if (!t.enabled) { scores.delete(t.id); continue; }
-    const s = matchScore(frame, t.rect, prep(t), config.detection.searchMarginPct);
+    const s = matchScore(frame.gray, t.rect, prep(t), d.searchMarginPct);
     scores.set(t.id, s);
-    const isAbove = s >= t.threshold;
-    if (isAbove && !above.has(t.id)) {
-      // Fire on the rising edge, at most once per cooldown per event key.
-      const k = 'key:' + t.key;
-      if (now - (lastFired.get(k) ?? 0) >= t.cooldownSec * 1000) { lastFired.set(k, now); fire(t.key, t.name, s); }
+    if (!d.enabled) continue;
+    if (s >= t.threshold) {
+      const n = (streak.get(t.id) ?? 0) + 1;
+      streak.set(t.id, n);
+      if (n >= Math.max(1, d.confirmFrames) && !latched.has(t.id)) {
+        latched.add(t.id);
+        const k = 'key:' + t.key; // cooldown is shared by every template of the same event
+        if (now - (lastFired.get(k) ?? 0) >= t.cooldownSec * 1000) { lastFired.set(k, now); fire(t.key, t.name, s, frame); }
+      }
+    } else {
+      streak.set(t.id, 0);
+      if (s < t.threshold - d.rearmMargin) latched.delete(t.id);
     }
-    if (isAbove) above.add(t.id); else above.delete(t.id);
   }
+  analysisMs = analysisMs * 0.8 + (performance.now() - started) * 0.2;
 }
 
 async function loop() {
@@ -97,86 +110,142 @@ async function loop() {
     syncSource();
     if (source) {
       const bmp = await source.grab(config.analysisWidth);
-      const gray = decodeBmpGray(bmp);
-      latest = { bmp, gray, ts: Date.now() };
-      ring.push(latest); if (ring.length > BUFFER_FRAMES) ring.shift();
+      const frame = { bmp, gray: decodeBmpGray(bmp), ts: Date.now() };
+      latest = frame;
+      ring.push(frame);
+      const max = Math.max(4, Math.round(config.bufferSeconds * config.fps));
+      while (ring.length > max) ring.shift();
       frameTimes.push(Date.now()); frameTimes = frameTimes.filter((t) => Date.now() - t < 3000);
-      status = `capturing ${gray.w}×${gray.h} from ${source.name}`;
-      detect(gray);
+      status = `capturing ${frame.gray.w}×${frame.gray.h} from ${source.name}`;
+      detect(frame);
     }
   } catch (e) {
     status = (e as Error).message;
+    scores.clear();
   }
   const delay = Math.max(20, 1000 / Math.max(1, config.fps) - (Date.now() - started));
   setTimeout(loop, status.startsWith('capturing') ? delay : 1500);
 }
 
+function addTemplate(f: Frame, rect: Template['rect'], key: string, name: string): Template {
+  const crop = cropTemplate(f.gray, rect);
+  const t: Template = {
+    id: randomUUID(), key, name: name || keyLabel(key), enabled: true,
+    rect, tw: crop.w, th: crop.h, data: Buffer.from(crop.px).toString('base64'),
+    threshold: config.detection.defaultThreshold, cooldownSec: config.detection.defaultCooldownSec, frameWidth: f.gray.w,
+  };
+  templates.push(t); saveTemplates(templates);
+  return t;
+}
+
+function validTemplate(t: any): t is Template {
+  return t && typeof t.key === 'string' && KEYS.some((k) => k.key === t.key) && t.rect && [t.rect.x, t.rect.y, t.rect.w, t.rect.h].every((v) => typeof v === 'number' && v >= 0 && v <= 1)
+    && Number.isInteger(t.tw) && Number.isInteger(t.th) && typeof t.data === 'string' && Buffer.from(t.data, 'base64').length === t.tw * t.th;
+}
+
 // ---------------- HTTP ----------------
 const localOrigins = () => [`http://localhost:${config.port}`, `http://127.0.0.1:${config.port}`];
-function send(res: ServerResponse, code: number, body: unknown, type = 'application/json') {
-  res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-store' });
+function send(res: ServerResponse, code: number, body: unknown, type = 'application/json', extra: Record<string, string> = {}) {
+  res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-store', ...extra });
   res.end(typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body));
 }
 async function body(req: IncomingMessage): Promise<any> {
   let data = '';
-  for await (const chunk of req) { data += chunk; if (data.length > 1e6) throw new Error('too large'); }
+  for await (const chunk of req) { data += chunk; if (data.length > 20e6) throw new Error('too large'); }
   return data ? JSON.parse(data) : {};
 }
-const publicTemplate = (t: Template) => ({ ...t, data: undefined, score: scores.get(t.id) ?? null });
+const publicTemplate = (t: Template) => ({ ...t, data: undefined, score: scores.get(t.id) ?? null, mismatchedWidth: t.frameWidth !== config.analysisWidth });
 const frames = () => frozen ?? ring;
+
+function hint(): string | null {
+  const s = status.toLowerCase();
+  if (s.includes('minimized')) return 'The game is minimized. Restore it. It can sit behind other windows, just not minimized.';
+  if (s.includes('not found')) return 'Start Mahjong Soul. If it is running, check "Game process name" in settings (Steam: Jantama_MahjongSoul).';
+  if (s.includes('obs')) return 'Check OBS is open, Tools → WebSocket Server Settings is enabled, and the password and source name match.';
+  if (s.includes('helper')) return 'The capture helper could not start. Try restarting the app.';
+  if (templates.length === 0 && s.startsWith('capturing')) return 'Picture is working. Next: catch a banner and save your first template.';
+  if (templates.some((t) => t.frameWidth !== config.analysisWidth)) return 'Some templates were taught at a different analysis width. Re-teach them or change the width back.';
+  return null;
+}
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', 'http://localhost');
   const origin = req.headers.origin;
   if (req.method !== 'GET' && origin && !localOrigins().includes(origin)) return send(res, 403, { error: 'forbidden origin' });
-  const path = url.pathname;
+  const path = url.pathname, M = req.method;
   try {
-    if (req.method === 'GET' && path === '/') return send(res, 200, readAsset('index.html'), 'text/html; charset=utf-8');
-    if (req.method === 'GET' && path === '/ui.js') return send(res, 200, readAsset('ui.js'), 'text/javascript; charset=utf-8');
-    if (req.method === 'GET' && path === '/api/config') return send(res, 200, { config, hints: HINTS, keys: KEYS });
-    if (req.method === 'POST' && path === '/api/config') {
+    if (M === 'GET' && path === '/') return send(res, 200, readAsset('index.html'), 'text/html; charset=utf-8');
+    if (M === 'GET' && path === '/ui.js') return send(res, 200, readAsset('ui.js'), 'text/javascript; charset=utf-8');
+    if (M === 'GET' && path === '/api/config') return send(res, 200, { config, hints: HINTS, keys: KEYS });
+    if (M === 'POST' && path === '/api/config') {
       const prevWidth = config.analysisWidth;
       config = saveConfig(await body(req));
       syncTargets(); syncSource();
       if (prevWidth !== config.analysisWidth) { ring = []; frozen = null; }
       return send(res, 200, { ok: true, config });
     }
-    if (req.method === 'GET' && path === '/api/status') return send(res, 200, {
-      version: VERSION, dataDir: DATA_DIR, status, fps: frameTimes.length / 3,
+    if (M === 'POST' && path === '/api/detection') {
+      const b = await body(req);
+      config = saveConfig({ ...config, detection: { ...config.detection, enabled: !!b.enabled } });
+      return send(res, 200, { ok: true, enabled: config.detection.enabled });
+    }
+    if (M === 'GET' && path === '/api/status') return send(res, 200, {
+      version: VERSION, dataDir: DATA_DIR, status, hint: hint(), fps: frameTimes.length / 3, analysisMs,
+      detecting: config.detection.enabled, bufferSeconds: config.bufferSeconds,
       targets: targets.map((t) => ({ url: t.url, connected: !!t.ws })),
       frozen: !!frozen, frames: frames().length,
-      templates: templates.map(publicTemplate), log,
+      templates: templates.map(publicTemplate),
+      detections: detections.map(({ frame, ...d }, i) => ({ ...d, index: i, label: keyLabel(d.key), hasFrame: !!frame })),
     });
-    if (req.method === 'GET' && path === '/api/frame/latest') return latest ? send(res, 200, latest.bmp, 'image/bmp') : send(res, 404, { error: status });
-    const fm = /^\/api\/frame\/(\d+)$/.exec(path);
-    if (req.method === 'GET' && fm) { const f = frames()[Number(fm[1])]; return f ? send(res, 200, f.bmp, 'image/bmp') : send(res, 404, { error: 'no such frame' }); }
-    if (req.method === 'POST' && path === '/api/freeze') {
+    if (M === 'GET' && path === '/api/frame/latest') return latest ? send(res, 200, latest.bmp, 'image/bmp') : send(res, 404, { error: status });
+    let m = /^\/api\/frame\/(\d+)$/.exec(path);
+    if (M === 'GET' && m) { const f = frames()[Number(m[1])]; return f ? send(res, 200, f.bmp, 'image/bmp') : send(res, 404, { error: 'no such frame' }); }
+    m = /^\/api\/detection\/(\d+)$/.exec(path);
+    if (M === 'GET' && m) { const f = detections[Number(m[1])]?.frame; return f ? send(res, 200, f.bmp, 'image/bmp') : send(res, 404, { error: 'no snapshot' }); }
+    if (M === 'POST' && path === '/api/freeze') {
       const b = await body(req);
       frozen = b.frozen ? [...ring] : null;
       return send(res, 200, { ok: true, frames: frames().length });
     }
-    if (req.method === 'POST' && path === '/api/templates') {
-      const b = await body(req);
+    if (M === 'POST' && path === '/api/scan') {
+      // Best score of every template over the frozen (or buffered) frames: shows what threshold would work.
       const list = frames();
-      const f = typeof b.frame === 'number' ? list[b.frame] : latest;
-      if (!f) return send(res, 400, { error: 'No frame to cut from yet.' });
+      const result = templates.map((t) => {
+        let best = -1, at = -1, worst = 2;
+        list.forEach((f, i) => { const s = matchScore(f.gray, t.rect, prep(t), config.detection.searchMarginPct); if (s > best) { best = s; at = i; } if (s < worst) worst = s; });
+        return { id: t.id, best, at, worst: list.length ? worst : null, wouldFire: best >= t.threshold };
+      });
+      return send(res, 200, { frames: list.length, result });
+    }
+    if (M === 'POST' && path === '/api/templates') {
+      const b = await body(req);
+      const f = b.snapshot !== undefined ? detections[b.snapshot]?.frame : typeof b.frame === 'number' ? frames()[b.frame] : latest;
+      if (!f) return send(res, 400, { error: 'No picture to cut from yet.' });
       if (!KEYS.some((k) => k.key === b.key)) return send(res, 400, { error: 'Pick an event.' });
-      const crop = cropTemplate(f.gray, b.rect);
-      const t: Template = {
-        id: randomUUID(), key: b.key, name: String(b.name || KEYS.find((k) => k.key === b.key)!.label), enabled: true,
-        rect: b.rect, tw: crop.w, th: crop.h, data: Buffer.from(crop.px).toString('base64'),
-        threshold: config.detection.defaultThreshold, cooldownSec: config.detection.defaultCooldownSec, frameWidth: f.gray.w,
-      };
-      templates.push(t); saveTemplates(templates);
+      const t = addTemplate(f, b.rect, b.key, String(b.name ?? '').trim());
       return send(res, 200, { ok: true, template: publicTemplate(t), selfScore: matchScore(f.gray, t.rect, prep(t), config.detection.searchMarginPct) });
     }
-    const tm = /^\/api\/templates\/([\w-]+)(\.bmp|\/fire)?$/.exec(path);
-    if (tm) {
-      const t = templates.find((x) => x.id === tm[1]);
+    if (M === 'GET' && path === '/api/templates/export') {
+      const data = { app: 'mahjong-soul-screen-reader', version: 1, analysisWidth: config.analysisWidth, exported: new Date().toISOString(), templates };
+      return send(res, 200, JSON.stringify(data, null, 2), 'application/json', { 'Content-Disposition': 'attachment; filename="mahjong-soul-templates.json"' });
+    }
+    if (M === 'POST' && path === '/api/templates/import') {
+      const b = await body(req);
+      const incoming = Array.isArray(b.templates) ? b.templates : Array.isArray(b.data?.templates) ? b.data.templates : [];
+      const good = incoming.filter(validTemplate);
+      if (!good.length) return send(res, 400, { error: 'No valid templates in that file.' });
+      if (b.mode === 'replace') { templates = []; prepared.clear(); }
+      for (const t of good) templates.push({ ...t, id: randomUUID(), enabled: t.enabled !== false, threshold: Number(t.threshold) || config.detection.defaultThreshold, cooldownSec: Number(t.cooldownSec) || config.detection.defaultCooldownSec, frameWidth: Number(t.frameWidth) || config.analysisWidth });
+      saveTemplates(templates);
+      return send(res, 200, { ok: true, added: good.length, skipped: incoming.length - good.length });
+    }
+    m = /^\/api\/templates\/([\w-]+)(\.bmp|\/fire)?$/.exec(path);
+    if (m) {
+      const t = templates.find((x) => x.id === m![1]);
       if (!t) return send(res, 404, { error: 'template not found' });
-      if (req.method === 'GET' && tm[2] === '.bmp') return send(res, 200, encodeGrayBmp({ w: t.tw, h: t.th, px: Buffer.from(t.data, 'base64') }), 'image/bmp');
-      if (req.method === 'POST' && tm[2] === '/fire') { fire(t.key, t.name, null, true); return send(res, 200, { ok: true }); }
-      if (req.method === 'POST' && !tm[2]) {
+      if (M === 'GET' && m[2] === '.bmp') return send(res, 200, encodeGrayBmp({ w: t.tw, h: t.th, px: Buffer.from(t.data, 'base64') }), 'image/bmp');
+      if (M === 'POST' && m[2] === '/fire') { fire(t.key, t.name, null, latest, true); return send(res, 200, { ok: true }); }
+      if (M === 'POST' && !m[2]) {
         const b = await body(req);
         if (typeof b.threshold === 'number') t.threshold = Math.min(0.999, Math.max(0.3, b.threshold));
         if (typeof b.cooldownSec === 'number') t.cooldownSec = Math.max(0, b.cooldownSec);
@@ -186,13 +255,13 @@ const server = createServer(async (req, res) => {
         saveTemplates(templates);
         return send(res, 200, { ok: true, template: publicTemplate(t) });
       }
-      if (req.method === 'DELETE' && !tm[2]) {
+      if (M === 'DELETE' && !m[2]) {
         templates = templates.filter((x) => x !== t); prepared.delete(t.id); saveTemplates(templates);
         return send(res, 200, { ok: true });
       }
     }
-    if (req.method === 'POST' && path === '/api/fire') { const b = await body(req); fire(String(b.key), 'test button', null, true); return send(res, 200, { ok: true }); }
-    if (req.method === 'GET' && path === '/api/obs/sources') {
+    if (M === 'POST' && path === '/api/fire') { const b = await body(req); fire(String(b.key), 'test button', null, latest, true); return send(res, 200, { ok: true }); }
+    if (M === 'GET' && path === '/api/obs/sources') {
       const obs = new ObsCapture(config.obs.url, config.obs.password, '');
       try { return send(res, 200, { sources: await obs.listSources() }); } finally { obs.close(); }
     }

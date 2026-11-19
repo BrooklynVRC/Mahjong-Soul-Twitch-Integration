@@ -14,7 +14,8 @@ export const DEFAULT_CONFIG = {
   obs: { url: 'ws://127.0.0.1:4455', password: '', sourceName: '' },
   fps: 4,
   analysisWidth: 480,
-  detection: { enabled: true, searchMarginPct: 8, defaultThreshold: 0.8, defaultCooldownSec: 6 },
+  bufferSeconds: 20,
+  detection: { enabled: true, searchMarginPct: 8, defaultThreshold: 0.8, defaultCooldownSec: 6, confirmFrames: 1, rearmMargin: 0.05 },
   targets: ['ws://127.0.0.1:7701/game', 'ws://127.0.0.1:7702/game'],
 };
 export type Config = typeof DEFAULT_CONFIG;
@@ -32,6 +33,10 @@ export const HINTS: Record<string, unknown> = {
   'detection.searchMarginPct': { label: 'Position tolerance (%)', help: 'How far a banner may move from where you taught it.', min: 0, max: 30, step: 1 },
   'detection.defaultThreshold': { label: 'Default match threshold', min: 0.5, max: 0.99, step: 0.01 },
   'detection.defaultCooldownSec': { label: 'Default cooldown (s)', min: 1, max: 60 },
+  bufferSeconds: { label: 'Freeze buffer (seconds)', help: 'How far back "Freeze" can go.', min: 5, max: 60, step: 1 },
+  'detection.enabled': { label: 'Detection on' },
+  'detection.confirmFrames': { label: 'Frames to confirm', help: 'A banner must match this many checks in a row before it fires. 2 cuts false alarms; 1 reacts fastest.', min: 1, max: 5, step: 1 },
+  'detection.rearmMargin': { label: 'Re-arm margin', help: 'After firing, the score must drop this far below the threshold before the same template can fire again.', min: 0, max: 0.3, step: 0.01 },
   targets: { label: 'Send events to', help: 'The Twitch app (7701) and Lovense app (7702). Whichever is running receives events.', template: 'ws://127.0.0.1:7701/game' },
 };
 

@@ -8,33 +8,42 @@
   :root { --bg:#10141a; --card:#19202a; --line:#2a3340; --text:#e6ebf2; --muted:#93a0b2; --accent:#3fb6a8; --ok:#4fc98a; --bad:#ff6b6b; --warn:#f0b84a; }
   * { box-sizing: border-box; }
   body { margin:0; font:15px/1.45 "Segoe UI", system-ui, sans-serif; background:var(--bg); color:var(--text); }
-  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 100px; }
+  main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 100px; }
   h1 { font-size: 22px; margin: 0 0 4px; } h2 { font-size: 16px; margin: 0 0 10px; }
   .sub { color: var(--muted); margin: 0 0 18px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
-  .status { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+  .status { display:grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
   .stat { background:#131820; border-radius:8px; padding:10px 12px; } .stat b { display:block; font-size:12px; color:var(--muted); font-weight:500; }
   .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; background:var(--bad); } .dot.on { background:var(--ok); }
   button, select, input { font: inherit; }
-  button { background:#27303c; color:var(--text); border:1px solid #384354; border-radius:7px; padding:6px 12px; cursor:pointer; }
-  button:hover { border-color: var(--accent); } .primary { background:var(--accent); border-color:var(--accent); color:#041312; font-weight:600; }
-  .small { padding:3px 9px; font-size:13px; } .danger { color: var(--bad); }
+  button, .btn { background:#27303c; color:var(--text); border:1px solid #384354; border-radius:7px; padding:6px 12px; cursor:pointer; text-decoration:none; display:inline-block; }
+  button:hover, .btn:hover { border-color: var(--accent); } .primary { background:var(--accent); border-color:var(--accent); color:#041312; font-weight:600; }
+  .small { padding:3px 9px; font-size:13px; } .danger { color: var(--bad); } .paused { background: var(--warn); border-color: var(--warn); color:#1a1200; font-weight:600; }
   .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:10px; }
-  .grid { display:grid; grid-template-columns: minmax(0, 3fr) minmax(260px, 2fr); gap: 16px; }
-  @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+  .grid { display:grid; grid-template-columns: minmax(0, 3fr) minmax(280px, 2fr); gap: 16px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
   canvas { width:100%; background:#000; border-radius:8px; cursor: crosshair; display:block; }
   select, input[type=text], input[type=number], input[type=password] { background:#0d1117; color:var(--text); border:1px solid #333d4b; border-radius:6px; padding:5px 8px; }
   input[type=range] { width: 100%; }
   .help { color: var(--muted); font-size: 13px; }
+  #hint { display:none; margin-top:12px; padding:10px 12px; border-radius:8px; background:#2b2414; border:1px solid #5a4a20; color:#f6dfa4; }
+  #modeBar { margin-top:8px; padding:6px 10px; border-radius:6px; font-size:13px; background:#131820; color:var(--muted); }
+  #modeBar.frozen { background:#142a28; color:#9fe5db; } #modeBar.snapshot { background:#2a1f33; color:#e0c4f5; }
+  .checklist { display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:12px; font-size:14px; }
+  .checklist span::before { content:'○ '; color: var(--muted); } .checklist span.done::before { content:'✓ '; color: var(--ok); }
   .tpl { display:grid; grid-template-columns: 110px 1fr; gap: 10px; padding:10px 0; border-top:1px solid var(--line); }
   .tpl img { width:110px; image-rendering: pixelated; border-radius:4px; background:#000; }
   .tpl .fields { display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; }
   .tpl label { font-size:13px; color: var(--muted); display:flex; gap:4px; align-items:center; }
   .tpl input[type=number] { width: 70px; }
+  .tpl .scan { font-size:12px; color: var(--muted); margin-top:4px; } .tpl .scan.good { color: var(--ok); } .tpl .scan.bad { color: var(--warn); }
+  .badge { font-size:11px; background:#5a4a20; color:#f6dfa4; border-radius:4px; padding:1px 6px; }
   .bar { height:8px; background:#0d1117; border-radius:4px; overflow:hidden; position:relative; width: 100%; margin-top:6px; }
   .bar i { position:absolute; left:0; top:0; bottom:0; background: var(--muted); }
   .bar i.hit { background: var(--ok); } .bar b { position:absolute; top:-2px; bottom:-2px; width:2px; background: var(--warn); }
-  #log { font: 13px/1.5 Consolas, monospace; max-height: 200px; overflow:auto; background:#0d1117; border-radius:8px; padding: 8px 10px; }
+  #log { font-size: 13px; max-height: 230px; overflow:auto; background:#0d1117; border-radius:8px; padding: 4px; }
+  #log .entry { display:flex; gap:8px; align-items:center; padding:4px 6px; border-radius:5px; cursor:pointer; }
+  #log .entry:hover { background:#1b2430; } #log time { color: var(--muted); font-family: Consolas, monospace; }
   details.group { border:1px solid var(--line); border-radius:8px; padding: 6px 12px; margin: 8px 0; background:#141a22; }
   details.group > summary { cursor:pointer; font-weight:600; padding: 4px 0; }
   .field { display:grid; grid-template-columns: 220px 1fr; gap: 4px 12px; align-items:center; padding: 6px 0; border-top: 1px solid #1f2731; }
@@ -54,20 +63,24 @@
   <section class="card">
     <div class="status">
       <div class="stat"><b>Picture</b><span id="sSource">…</span></div>
-      <div class="stat"><b>Checks per second</b><span id="sFps">…</span></div>
+      <div class="stat"><b>Speed</b><span id="sFps">…</span></div>
       <div class="stat"><b>Sending to</b><span id="sTargets">…</span></div>
-      <div class="stat"><b>Templates</b><span id="sTpl">…</span></div>
+      <div class="stat"><b>Detection</b><span id="sDetect">…</span></div>
     </div>
+    <div class="row"><button id="pauseBtn">Pause detection</button><span class="help">Pausing stops events from being sent; the picture keeps updating.</span></div>
+    <div class="checklist" id="checklist"></div>
+    <div id="hint"></div>
   </section>
 
   <div class="grid">
     <section class="card">
       <h2>1. Catch a banner</h2>
-      <p class="help">When a banner appears in game (RIICHI, RON, TSUMO, results…), press <b>Freeze</b>. Slide to the clearest frame, then drag a box tightly around the banner's text.</p>
+      <p class="help">When a banner appears in game (RIICHI, RON, TSUMO, results…), click <b>Freeze</b>. You don't need to be fast: it keeps the last <span class="bufS">20</span> seconds. Slide to the clearest frame, then drag a box tightly around the banner's word.</p>
       <canvas id="view" width="960" height="540"></canvas>
+      <div id="modeBar">Live</div>
       <div class="row">
-        <button class="primary" id="freezeBtn">Freeze last 10 s</button>
-        <span id="frameInfo" class="help">Live</span>
+        <button class="primary" id="freezeBtn">Freeze last <span class="bufS">20</span> s</button>
+        <button id="liveBtn" style="display:none">Back to live</button>
       </div>
       <input type="range" id="scrub" min="0" max="0" value="0" disabled>
     </section>
@@ -76,23 +89,36 @@
       <h2>2. Save it as a template</h2>
       <div class="row" style="margin-top:0"><select id="tKey" style="width:100%"></select></div>
       <p class="help" id="tHint"></p>
-      <div class="row"><input type="text" id="tName" placeholder="Name (optional)" style="flex:1"></div>
+      <div class="row"><input type="text" id="tName" placeholder="Name, e.g. Riichi (right side)" style="flex:1"></div>
       <div class="row"><button class="primary" id="saveTpl">Save template</button><span id="saveMsg" class="help"></span></div>
-      <p class="help">Tips: pick parts that look the same every time, like the banner's word, not the hand or background. Teach a template for each side of the table where the banner can show up. Colour doesn't matter: matching uses brightness only.</p>
-      <h2 style="margin-top:16px">Detections</h2>
-      <div id="log">Nothing detected yet.</div>
+      <details class="group"><summary>Tips for good templates</summary>
+        <p class="help">• Box only the part that looks the same every time, like the banner's word. Leave out tiles, avatars and the table.<br>
+        • Opponent banners appear on their side: teach one per side and give them all the same event.<br>
+        • Banners animate, so pick the frame where the word is sharpest and fully visible.<br>
+        • Matching uses brightness, so colour changes don't matter much.<br>
+        • After saving, click <b>Scan frozen frames</b> below to check the score jumps on the banner frames only.</p>
+      </details>
+      <h2 style="margin-top:14px">Detections</h2>
+      <p class="help" style="margin-top:0">Click one to see the exact picture that triggered it. You can teach from it too.</p>
+      <div id="log"><div class="help" style="padding:6px">Nothing detected yet.</div></div>
     </section>
   </div>
 
   <section class="card">
     <h2>3. Templates</h2>
-    <p class="help">The bar shows how closely the current picture matches each template; the yellow mark is the threshold. A template fires when the bar crosses the mark. Raise the threshold if it fires by mistake; lower it if it misses.</p>
+    <p class="help">The bar shows how closely the current picture matches each template; the yellow mark is the threshold. Raise the threshold if it fires by mistake, lower it if it misses. Templates for the same event share one cooldown.</p>
+    <div class="row">
+      <button id="scanBtn">Scan frozen frames</button>
+      <a class="btn" href="/api/templates/export" download>Export templates</a>
+      <label class="btn">Import templates<input type="file" id="importFile" accept=".json,application/json" hidden></label>
+      <span id="tplMsg" class="help"></span>
+    </div>
     <div id="tpls"></div>
   </section>
 
   <section class="card">
     <h2>Test the apps without playing</h2>
-    <p class="help">Sends an event to the Twitch/Lovense apps as if the banner had been seen.</p>
+    <p class="help">Sends an event to the Twitch/Lovense apps as if the banner had been seen. Works even while detection is paused.</p>
     <div class="row" id="fireBtns"></div>
   </section>
 
@@ -108,8 +134,9 @@
 <script>
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  let cfg, hints, keys = [], st = null, frozen = false, frameIdx = 0, frameCount = 0;
-  let img = null, sel = null, drag = null;
+  let cfg, hints, keys = [], st = null;
+  let mode = 'live', frameIdx = 0, frameCount = 0, snapIdx = -1;   // mode: live | frozen | snapshot
+  let img = null, sel = null, drag = null, scan = {};
   const canvas = $('view'), g = canvas.getContext('2d');
 
   async function api(method, url, data) {
@@ -117,52 +144,63 @@
     return r.json().catch(() => ({}));
   }
 
-  // ---------- frame view ----------
+  // ---------- view ----------
+  function setMode(m) {
+    mode = m;
+    $('liveBtn').style.display = m === 'live' ? 'none' : '';
+    $('scrub').disabled = m !== 'frozen';
+    $('modeBar').className = m;
+    $('modeBar').textContent = m === 'live' ? 'Live: drag a box to teach from the current picture'
+      : m === 'frozen' ? `Frozen: frame ${frameIdx + 1} of ${frameCount}. Slide to pick a frame, then drag a box`
+      : `Detection snapshot: ${st?.detections?.[snapIdx]?.label ?? ''}. Drag a box to teach from it`;
+  }
   async function loadFrame() {
-    const url = frozen ? `/api/frame/${frameIdx}` : '/api/frame/latest';
+    const url = mode === 'frozen' ? `/api/frame/${frameIdx}` : mode === 'snapshot' ? `/api/detection/${snapIdx}` : '/api/frame/latest';
     const r = await fetch(url + '?t=' + Date.now()).catch(() => null);
     if (!r || !r.ok) return;
-    const bmp = await createImageBitmap(await r.blob());
-    img = bmp;
-    if (canvas.width !== bmp.width * 2) { canvas.width = bmp.width * 2; canvas.height = bmp.height * 2; }
+    img = await createImageBitmap(await r.blob());
+    if (canvas.width !== img.width * 2) { canvas.width = img.width * 2; canvas.height = img.height * 2; }
     draw();
   }
   function draw() {
-    if (!img) { g.fillStyle = '#000'; g.fillRect(0, 0, canvas.width, canvas.height); return; }
-    g.imageSmoothingEnabled = true;
+    if (!img) { g.fillStyle = '#000'; g.fillRect(0, 0, canvas.width, canvas.height); g.fillStyle = '#93a0b2'; g.font = '20px Segoe UI'; g.fillText('Waiting for the game picture…', 30, 50); return; }
     g.drawImage(img, 0, 0, canvas.width, canvas.height);
     const W = canvas.width, H = canvas.height;
     for (const t of st?.templates ?? []) {
       if (!t.enabled) continue;
-      const hit = t.score !== null && t.score >= t.threshold;
-      g.strokeStyle = hit ? '#4fc98a' : 'rgba(240,184,74,.55)'; g.lineWidth = hit ? 4 : 2;
+      const hit = mode === 'live' && t.score !== null && t.score >= t.threshold;
+      g.strokeStyle = hit ? '#4fc98a' : 'rgba(240,184,74,.5)'; g.lineWidth = hit ? 4 : 2;
       g.strokeRect(t.rect.x * W, t.rect.y * H, t.rect.w * W, t.rect.h * H);
-      g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(t.rect.x * W, t.rect.y * H - 18, 150, 18);
-      g.fillStyle = '#fff'; g.font = '13px Segoe UI'; g.fillText(`${t.name} ${t.score !== null ? t.score.toFixed(2) : ''}`, t.rect.x * W + 4, t.rect.y * H - 5);
+      if (mode === 'live') {
+        const label = `${t.name} ${t.score !== null ? t.score.toFixed(2) : ''}`;
+        g.font = '13px Segoe UI'; const tw = g.measureText(label).width + 8;
+        g.fillStyle = 'rgba(0,0,0,.65)'; g.fillRect(t.rect.x * W, Math.max(0, t.rect.y * H - 18), tw, 18);
+        g.fillStyle = '#fff'; g.fillText(label, t.rect.x * W + 4, Math.max(13, t.rect.y * H - 5));
+      }
     }
     if (sel) { g.strokeStyle = '#3fb6a8'; g.lineWidth = 3; g.setLineDash([8, 5]); g.strokeRect(sel.x * W, sel.y * H, sel.w * W, sel.h * H); g.setLineDash([]); }
   }
   const pos = (e) => { const r = canvas.getBoundingClientRect(); return { x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) }; };
-  canvas.addEventListener('pointerdown', (e) => { drag = pos(e); sel = null; canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener('pointerdown', (e) => { if (mode === 'live') freeze(); drag = pos(e); sel = null; canvas.setPointerCapture(e.pointerId); });
   canvas.addEventListener('pointermove', (e) => { if (!drag) return; const p = pos(e); sel = { x: Math.min(drag.x, p.x), y: Math.min(drag.y, p.y), w: Math.abs(p.x - drag.x), h: Math.abs(p.y - drag.y) }; draw(); });
   canvas.addEventListener('pointerup', () => { drag = null; if (sel && (sel.w < 0.01 || sel.h < 0.01)) sel = null; draw(); });
 
-  $('freezeBtn').onclick = async () => {
-    frozen = !frozen;
-    const r = await api('POST', '/api/freeze', { frozen });
-    frameCount = r.frames || 0;
-    $('freezeBtn').textContent = frozen ? 'Back to live' : 'Freeze last 10 s';
-    $('scrub').disabled = !frozen; $('scrub').max = Math.max(0, frameCount - 1); $('scrub').value = frameIdx = Math.max(0, frameCount - 1);
-    $('frameInfo').textContent = frozen ? `Frozen: frame ${frameIdx + 1} of ${frameCount}. Drag a box around the banner.` : 'Live';
-    loadFrame();
-  };
-  $('scrub').oninput = (e) => { frameIdx = Number(e.target.value); $('frameInfo').textContent = `Frozen: frame ${frameIdx + 1} of ${frameCount}`; loadFrame(); };
+  async function freeze() {
+    const r = await api('POST', '/api/freeze', { frozen: true });
+    frameCount = r.frames || 0; frameIdx = Math.max(0, frameCount - 1);
+    $('scrub').max = Math.max(0, frameCount - 1); $('scrub').value = frameIdx;
+    setMode('frozen'); loadFrame();
+  }
+  $('freezeBtn').onclick = () => { sel = null; freeze(); };
+  $('liveBtn').onclick = async () => { await api('POST', '/api/freeze', { frozen: false }); sel = null; scan = {}; setMode('live'); loadFrame(); };
+  $('scrub').oninput = (e) => { frameIdx = Number(e.target.value); setMode('frozen'); loadFrame(); };
 
   $('saveTpl').onclick = async () => {
     if (!sel) return ($('saveMsg').textContent = 'Drag a box on the picture first.');
-    const r = await api('POST', '/api/templates', { frame: frozen ? frameIdx : 'latest', rect: sel, key: $('tKey').value, name: $('tName').value });
-    $('saveMsg').textContent = r.ok ? `Saved ✓ (self-match ${r.selfScore.toFixed(2)})` : (r.error || 'failed');
-    if (r.ok) { sel = null; $('tName').value = ''; refresh(true); }
+    const where = mode === 'snapshot' ? { snapshot: snapIdx } : mode === 'frozen' ? { frame: frameIdx } : { frame: 'latest' };
+    const r = await api('POST', '/api/templates', { ...where, rect: sel, key: $('tKey').value, name: $('tName').value });
+    $('saveMsg').textContent = r.ok ? `Saved ✓ "${r.template.name}"` : (r.error || 'failed');
+    if (r.ok) { sel = null; $('tName').value = ''; await refresh(true); draw(); }
   };
 
   // ---------- templates ----------
@@ -177,22 +215,25 @@
         const row = document.createElement('div'); row.className = 'tpl'; row.dataset.id = t.id;
         row.innerHTML = `<img src="/api/templates/${t.id}.bmp" alt="">
           <div><div class="fields">
-            <input type="text" data-f="name" value="${esc(t.name)}" style="width:170px">
+            <input type="text" data-f="name" value="${esc(t.name)}" style="width:180px">
             <select data-f="key">${keys.map((k) => `<option value="${k.key}" ${k.key === t.key ? 'selected' : ''}>${esc(k.label)}</option>`).join('')}</select>
             <label>threshold <input type="number" data-f="threshold" min="0.3" max="0.99" step="0.01" value="${t.threshold}"></label>
             <label>cooldown s <input type="number" data-f="cooldownSec" min="0" step="1" value="${t.cooldownSec}"></label>
             <label><input type="checkbox" data-f="enabled" ${t.enabled ? 'checked' : ''}> on</label>
             <button class="small" data-act="fire">Test</button>
             <button class="small danger" data-act="del">Delete</button>
-          </div><div class="bar"><i></i><b></b></div></div>`;
-        row.querySelectorAll('[data-f]').forEach((inp) => inp.addEventListener('change', () => {
+            ${t.mismatchedWidth ? '<span class="badge">taught at a different width</span>' : ''}
+          </div><div class="bar"><i></i><b></b></div><div class="scan"></div></div>`;
+        row.querySelectorAll('[data-f]').forEach((inp) => inp.addEventListener('change', async () => {
           const v = inp.type === 'checkbox' ? inp.checked : inp.type === 'number' ? Number(inp.value) : inp.value;
-          api('POST', `/api/templates/${t.id}`, { [inp.dataset.f]: v });
+          await api('POST', `/api/templates/${t.id}`, { [inp.dataset.f]: v });
+          if (inp.dataset.f === 'threshold' && scan[t.id]) { scan[t.id].threshold = v; showScan(); }
         }));
         row.querySelector('[data-act=fire]').onclick = () => api('POST', `/api/templates/${t.id}/fire`);
         row.querySelector('[data-act=del]').onclick = async () => { if (confirm(`Delete "${t.name}"?`)) { await api('DELETE', `/api/templates/${t.id}`); refresh(true); } };
         $('tpls').append(row);
       }
+      showScan();
     }
     for (const t of list) {
       const row = $('tpls').querySelector(`[data-id="${t.id}"]`); if (!row) continue;
@@ -201,25 +242,69 @@
       row.querySelector('.bar b').style.left = (t.threshold * 100) + '%';
     }
   }
+  function showScan() {
+    for (const row of $('tpls').querySelectorAll('.tpl')) {
+      const r = scan[row.dataset.id], el = row.querySelector('.scan');
+      if (!r) { el.textContent = ''; continue; }
+      const thr = r.threshold ?? st.templates.find((t) => t.id === row.dataset.id)?.threshold ?? 0.8;
+      el.className = 'scan ' + (r.best >= thr ? 'good' : 'bad');
+      el.textContent = `Scan of ${r.frames} frames: best ${r.best.toFixed(2)} (frame ${r.at + 1}), lowest ${r.worst?.toFixed(2)}. ` + (r.best >= thr ? 'Would fire ✓' : 'Would not fire at this threshold');
+    }
+  }
+  $('scanBtn').onclick = async () => {
+    $('tplMsg').textContent = 'Scanning…';
+    const r = await api('POST', '/api/scan');
+    scan = {}; for (const x of r.result || []) scan[x.id] = { ...x, frames: r.frames };
+    $('tplMsg').textContent = `Scanned ${r.frames} ${st.frozen ? 'frozen' : 'recent'} frames.`;
+    showScan();
+  };
+  $('importFile').onchange = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    let data; try { data = JSON.parse(await f.text()); } catch { $('tplMsg').textContent = 'That file is not valid JSON.'; return; }
+    const replace = st.templates.length && confirm('Replace your current templates?\nOK = replace, Cancel = add to them.');
+    const r = await api('POST', '/api/templates/import', { data, mode: replace ? 'replace' : 'add' });
+    $('tplMsg').textContent = r.ok ? `Imported ${r.added} template(s)${r.skipped ? `, skipped ${r.skipped} invalid` : ''}.` : (r.error || 'Import failed');
+    e.target.value = ''; refresh(true);
+  };
 
   // ---------- status ----------
   const dot = (on, text) => `<span class="dot ${on ? 'on' : ''}"></span>${esc(text)}`;
+  function renderLog() {
+    $('log').innerHTML = st.detections.length ? '' : '<div class="help" style="padding:6px">Nothing detected yet.</div>';
+    for (const d of st.detections) {
+      const row = document.createElement('div'); row.className = 'entry';
+      row.innerHTML = `<time>${new Date(d.ts).toLocaleTimeString()}</time><span>${esc(d.label)}</span><span class="help">${esc(d.name)}${d.score !== null ? ' · ' + d.score.toFixed(2) : ' · test'}</span>`;
+      if (d.hasFrame) row.onclick = () => { snapIdx = d.index; sel = null; setMode('snapshot'); loadFrame(); };
+      $('log').append(row);
+    }
+  }
+  let lastLog = '';
   async function refresh(forceTpl) {
     st = await api('GET', '/api/status').catch(() => null);
     if (!st) return;
     const ok = st.status.startsWith('capturing');
     $('sSource').innerHTML = dot(ok, st.status);
-    $('sFps').textContent = st.fps.toFixed(1);
-    $('sTargets').innerHTML = st.targets.map((t) => dot(t.connected, t.url.replace('ws://127.0.0.1:', 'port ').replace('/game', ''))).join('<br>') || 'nothing';
-    $('sTpl').textContent = `${st.templates.filter((t) => t.enabled).length} active`;
+    $('sFps').textContent = `${st.fps.toFixed(1)} checks/s · ${st.analysisMs.toFixed(1)} ms each`;
+    $('sTargets').innerHTML = st.targets.map((t) => dot(t.connected, (t.url.includes(':7701') ? 'Twitch app' : t.url.includes(':7702') ? 'Lovense app' : t.url) + (t.connected ? '' : ' (not running)'))).join('<br>') || 'nothing';
+    const active = st.templates.filter((t) => t.enabled).length;
+    $('sDetect').innerHTML = st.detecting ? dot(active > 0, `${active} template${active === 1 ? '' : 's'} active`) : '<span class="dot"></span>paused';
+    $('pauseBtn').textContent = st.detecting ? 'Pause detection' : 'Resume detection';
+    $('pauseBtn').className = st.detecting ? '' : 'paused';
+    $('hint').style.display = st.hint ? 'block' : 'none'; $('hint').textContent = st.hint || '';
+    const steps = [[ok, 'Game picture'], [active > 0, 'At least one template'], [st.targets.some((t) => t.connected), 'Twitch or Lovense app running'], [st.detections.some((d) => d.score !== null), 'First real detection']];
+    $('checklist').innerHTML = steps.map(([d, t]) => `<span class="${d ? 'done' : ''}">${t}</span>`).join('');
+    document.querySelectorAll('.bufS').forEach((e) => (e.textContent = st.bufferSeconds));
     $('dataDir').textContent = st.dataDir; $('version').textContent = 'v' + st.version;
-    $('log').innerHTML = st.log.length ? st.log.map((l) => `<div>${new Date(l.ts).toLocaleTimeString()} · ${esc(keys.find((k) => k.key === l.key)?.label ?? l.key)} <span class="help">${esc(l.name)}${l.score !== null ? ' · ' + l.score.toFixed(2) : ''}</span></div>`).join('') : 'Nothing detected yet.';
+    const logKey = st.detections.map((d) => d.ts).join();
+    if (logKey !== lastLog) { lastLog = logKey; renderLog(); }
     renderTemplates(forceTpl);
-    if (frozen) draw();
+    if (mode !== 'live') draw();
   }
+  $('pauseBtn').onclick = async () => { await api('POST', '/api/detection', { enabled: !st.detecting }); refresh(); };
 
   // ---------- settings ----------
-  $('saveCfg').onclick = async () => { const r = await api('POST', '/api/config', cfg); $('cfgMsg').textContent = r.ok ? 'Saved ✓' : (r.error || 'failed'); if (r.ok) { cfg = r.config; SettingsUI.render($('form'), cfg, hints, () => ($('cfgMsg').textContent = 'Unsaved changes')); } };
+  const renderForm = () => SettingsUI.render($('form'), cfg, hints, () => ($('cfgMsg').textContent = 'Unsaved changes'));
+  $('saveCfg').onclick = async () => { const r = await api('POST', '/api/config', cfg); $('cfgMsg').textContent = r.ok ? 'Saved ✓' : (r.error || 'failed'); if (r.ok) { cfg = r.config; renderForm(); } };
   $('obsList').onclick = async () => { $('cfgMsg').textContent = 'Asking OBS…'; const r = await api('GET', '/api/obs/sources'); $('cfgMsg').textContent = r.sources ? 'OBS sources: ' + r.sources.join(', ') : (r.error || 'failed'); };
 
   api('GET', '/api/config').then((d) => {
@@ -228,11 +313,10 @@
     const hint = () => ($('tHint').textContent = keys.find((k) => k.key === $('tKey').value)?.hint ?? '');
     $('tKey').onchange = hint; hint();
     for (const k of keys) $('fireBtns').append(SettingsUI.el('button', { class: 'small', onclick: () => api('POST', '/api/fire', { key: k.key }) }, k.label));
-    SettingsUI.render($('form'), cfg, hints, () => ($('cfgMsg').textContent = 'Unsaved changes'));
-    refresh(true);
+    renderForm(); setMode('live'); refresh(true);
   });
   setInterval(() => refresh(false), 500);
-  setInterval(() => { if (!frozen) loadFrame(); }, 300);
+  setInterval(() => { if (mode === 'live') loadFrame(); }, 300);
 </script>
 </body>
 </html>

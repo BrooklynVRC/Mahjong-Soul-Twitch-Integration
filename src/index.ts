@@ -8,6 +8,8 @@ import { Twitch, type TwitchEvent } from './twitch.js';
 let config: Config = loadConfig();
 const game = new GameTracker();
 const cooldowns = new Map<string, number>();
+let lastGameEvent = '';
+const describeSource = (e: { type: string; via?: string }) => `${e.type.replace('_', ' ')} (${e.via === 'screen' ? 'screen reader' : 'userscript'})`;
 
 const GAME_ORIGINS = ['https://game.mahjongsoul.com', 'https://mahjongsoul.game.yo-star.com', 'https://game.maj-soul.com', 'https://game.maj-soul.net'];
 const localOrigins = () => [`http://localhost:${config.port}`, `http://127.0.0.1:${config.port}`];
@@ -28,7 +30,7 @@ gameIn.on('connection', (ws) => {
   ws.on('message', (raw) => {
     try {
       const e = JSON.parse(String(raw));
-      if (e?.source === 'mahjongsoul') void handleGameEvent(e);
+      if (e?.source === 'mahjongsoul') { lastGameEvent = describeSource(e); void handleGameEvent(e); }
     } catch { /* ignore bad frames */ }
   });
   ws.on('close', () => console.log('[game] game source disconnected'));
@@ -122,7 +124,7 @@ const server = createServer(async (req, res) => {
       case 'GET /api/status': return send(res, 200, {
         version: VERSION, dataDir: DATA_DIR,
         twitch: twitch.status, redirectUri: twitch.redirectUri,
-        gameClients: gameIn.clients.size, overlayClients: overlayOut.clients.size, eventClients: eventsOut.clients.size,
+        gameClients: gameIn.clients.size, lastGameEvent, overlayClients: overlayOut.clients.size, eventClients: eventsOut.clients.size,
         game: game.snapshot(),
       });
       case 'POST /api/test/game': await handleGameEvent({ source: 'mahjongsoul', ts: Date.now(), ...(await body(req)) }); return send(res, 200, { ok: true });

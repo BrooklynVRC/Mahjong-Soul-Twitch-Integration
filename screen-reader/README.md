@@ -32,6 +32,15 @@ Tips:
 - **Wrong or missed detections:** raise the threshold if it fires by mistake, lower it if it misses, and use the cooldown to stop repeats.
 - **Analysis width:** if you change it, re-teach your templates.
 
+## Tools for tuning
+
+- **Setup checklist and hints:** the top of the page shows what's working and what to do next (e.g. the game is minimized, or there are no templates yet).
+- **Detection snapshots:** every detection keeps the exact picture that triggered it. Click it in *Detections* to see why it fired, and teach a new template straight from it.
+- **Scan frozen frames:** after freezing, this shows each template's best and lowest score across the frozen frames, so you can choose a threshold that fires on the banner and nowhere else.
+- **Pause detection:** stops sending events (e.g. between streams) while the picture keeps updating.
+- **Export / Import:** save your templates to a file, move them to another PC, or share them with someone who uses the same resolution and language.
+- **Frames to confirm / Re-arm margin** (settings): require a banner to match several checks in a row, and to fade before it can fire again. This cuts double-fires and flicker.
+
 ## What it can't know
 
 The screen reader only knows *which* banner appeared. It doesn't know han, fu, yaku, points or player names. The Twitch app uses its **"Text (screen reader)"** messages for these events, e.g. "I won by TSUMO!". For full detail, play the browser version with the userscript instead.
