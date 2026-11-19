@@ -40,7 +40,15 @@ The apps ship with a **built-in calibration**, and keep it up to date online. Mo
 | Everyone on the starting score | **game start** |
 | Score panel gone for a while | **game over**, final place = last placement |
 
-Your **live placement** and the **lead changes** come from the same numbers. Banner templates are optional extras for things scores can't show: yakuman, calls, round start, the game mode name, and instant results screens.
+Your **live placement** and the **lead changes** come from the same numbers.
+
+**Real time.** Scores only change after the result screens, so the built-in calibration also includes the **call banners** (RIICHI, RON, TSUMO, PON, CHI, KAN). The reader finds them anywhere on screen the instant they appear, and **where a banner appears tells it who called**. The scores then confirm a moment later and add what a banner can't show, such as "I dealt in", without repeating events.
+
+**Hand size.** The win-screen titles (**Mangan, Haneman, Baiman, Sanbaiman, Yakuman**) give "my mangan … my yakuman" (or the opponent's). The Lovense app has a separate action for each tier. If a title is missed, the size of the score jump is used instead.
+
+**In or out of a game.** The main menu (Ranked / Tournament / Friendly Match) and room screens mean you're not in a game. Seeing one ends the current game straight away and reports your final place. With no game board on screen for 20 seconds, the game also counts as over.
+
+**Any window size.** Everything is measured relative to the 16:9 game area, so the calibration works at any window size. It was tested down to 640×360.
 
 **It works the same at any window size.** The reader crops the title bar and borders, uses the 16:9 game area, and normalizes every box. Windowed, borderless and fullscreen at any resolution all look alike to it.
 

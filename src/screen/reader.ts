@@ -29,7 +29,7 @@ export const SCREEN_DEFAULTS = {
   bufferSeconds: 20,
   detection: { searchMarginPct: 8, defaultThreshold: 0.8, defaultCooldownSec: 6, confirmFrames: 1, rearmMargin: 0.05 },
   scores: {
-    enabled: true, minConfidence: 0.7, stableFrames: 3, settleSeconds: 3, gameEndSeconds: 40, autoLearn: true,
+    enabled: true, minConfidence: 0.7, stableFrames: 3, settleSeconds: 3, gameEndSeconds: 20, autoLearn: true,
     zone: { x: 0.3, y: 0.18, w: 0.4, h: 0.6 },
   },
   calibration: { autoUpdate: true, url: 'https://raw.githubusercontent.com/BrooklynVRC/Mahjong-Soul-Twitch-Integration/main/calibration/default-pack.json' },
@@ -109,6 +109,7 @@ export class ScreenReader {
   private lastEmitVia = new Map<string, string>();
   private lastWin: { mine: boolean; ts: number } | null = null;
   private lastTierAt = 0;
+  private lastMenuAt = 0;
   private source: Source | null = null;
   private sourceKey = '';
   status = 'starting';
@@ -249,7 +250,7 @@ export class ScreenReader {
     if (key === 'game_mode') s.mode = name;
     const place = placeOf(key);
     if (place) { s.inGame = false; s.lastResult = place; s.since = null; s.place = place; this.settled = null; this.stable = null; }
-    else if (key !== 'game_mode' && !s.inGame) { s.inGame = true; s.since = now; }
+    else if (key !== 'game_mode' && !s.inGame && now - this.lastMenuAt > 5000) { s.inGame = true; s.since = now; }
     this.pushState();
   }
 
@@ -346,7 +347,7 @@ export class ScreenReader {
     s.scores = { ...row };
     s.players = SEATS.filter((x) => row[x] !== null).length;
     s.place = placement(row);
-    if (!s.inGame) { s.inGame = true; s.since = now; }
+    if (!s.inGame && now - this.lastMenuAt > 5000) { s.inGame = true; s.since = now; }
     this.pushState();
   }
 
@@ -382,11 +383,12 @@ export class ScreenReader {
     for (const t of this.templates) {
       if (!t.enabled) { this.scores.delete(t.id); continue; }
       let s: number, where: { cx: number; cy: number } | null = null;
-      if (BANNER_KEYS.includes(t.key)) {
+      const isTitle = TITLE_KEYS.includes(t.key);
+      if (BANNER_KEYS.includes(t.key) || isTitle) {
         small ??= shrink(frame.gray, 480);
         let sq = this.searchables.get(t.id);
         if (!sq) { sq = searchable(Buffer.from(t.data, 'base64'), t.tw, t.th, t.frameWidth * (t.tw / Math.max(1, t.rect.w * t.frameWidth)), small.w); this.searchables.set(t.id, sq); }
-        const m = searchAnywhere(small, sq);
+        const m = searchAnywhere(small, sq, isTitle ? 0.6 : 0); // win-screen titles sit along the bottom, position varies with the art
         s = m.score; where = m;
       } else s = matchScore(frame.gray, t.rect, this.prep(t), d.searchMarginPct);
       this.scores.set(t.id, s);
@@ -399,7 +401,12 @@ export class ScreenReader {
           const k = 'key:' + t.key + (t.key === 'game_mode' ? ':' + t.name : '');
           if (now - (this.lastFired.get(k) ?? 0) >= t.cooldownSec * 1000) {
             this.lastFired.set(k, now);
-            if (t.key === 'game_mode') { if (this.state.mode !== t.name) this.emit(t.key, t.name, s, frame, 'banner'); }
+            if (t.key === 'menu_screen') {
+              this.lastMenuAt = now;
+              if (this.state.inGame) this.endGame('(back on the menu)');
+              this.record({ key: 'menu_screen', name: t.name, score: s, manual: false }, frame, 'banner', 'not in a game');
+            }
+            else if (t.key === 'game_mode') { if (this.state.mode !== t.name) this.emit(t.key, t.name, s, frame, 'banner'); }
             else if (TITLE_KEYS.includes(t.key)) {
               const mine = !this.lastWin || now - this.lastWin.ts > 60000 ? true : this.lastWin.mine;
               this.emit((mine ? 'my_' : 'opponent_') + t.key.slice(6), t.name, s, frame, 'banner', mine ? '' : '(opponent win)');

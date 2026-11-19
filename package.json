@@ -1,6 +1,6 @@
 {
   "name": "mahjong-soul-twitch",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Twitch + Discord integration for Mahjong Soul (Steam client): reads the game from the screen and drives chat, an OBS overlay, predictions and Discord Rich Presence.",
   "type": "module",
   "private": true,

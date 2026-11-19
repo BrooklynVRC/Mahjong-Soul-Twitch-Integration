@@ -1,6 +1,7 @@
 // Everything the screen reader reports. Both apps key their reactions on these. Same file in both repos.
 // `auto` = worked out from the score boxes alone (no banner template needed).
-export const KEYS: { key: string; label: string; hint: string; auto?: boolean; banner?: boolean; title?: boolean }[] = [
+export const KEYS: { key: string; label: string; hint: string; auto?: boolean; banner?: boolean; title?: boolean; marker?: boolean }[] = [
+  { key: 'menu_screen', label: 'Menu / lobby screen (not in a game)', marker: true, hint: 'Something only shown outside a match: the main menu (Ranked / Tournament / Friendly Match) or a room screen. Seeing it ends the current game straight away.' },
   { key: 'any_riichi', label: 'RIICHI banner (real time)', banner: true, hint: 'Teach the RIICHI call banner once, from any player. It is found anywhere on screen, and where it appears tells who called it.' },
   { key: 'any_ron', label: 'RON banner (real time)', banner: true, hint: 'Teach the RON call banner once, from any player. Where it appears tells who won; the scores add "I dealt in" a moment later.' },
   { key: 'any_tsumo', label: 'TSUMO banner (real time)', banner: true, hint: 'Teach the TSUMO call banner once, from any player. Where it appears tells who won.' },
@@ -50,7 +51,7 @@ export const placeOf = (k: string) => { const m = /^game_end_([1-4])$/.exec(k); 
 /** Banner keys found anywhere on screen; the reader turns them into the real event using the banner's position. */
 export const BANNER_KEYS = KEYS.filter((k) => k.banner).map((k) => k.key);
 /** Keys apps react to (the banner placeholders become real events before reaching the apps). */
-export const EVENT_KEYS = KEYS.filter((k) => !k.banner && !k.title);
+export const EVENT_KEYS = KEYS.filter((k) => !k.banner && !k.title && !k.marker);
 /** Win-screen title placeholders; credited to whoever just won. */
 export const TITLE_KEYS = KEYS.filter((k) => k.title).map((k) => k.key);
 /** Tier from the points a winner gained (non-dealer values; dealer hands may read one tier high). */

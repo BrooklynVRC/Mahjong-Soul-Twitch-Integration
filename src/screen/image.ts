@@ -141,7 +141,7 @@ export function searchable(px: ArrayLike<number>, tw: number, th: number, frameW
 }
 
 /** Finds the best match of the template anywhere in the (shrunk) picture. Returns score and centre (0..1). */
-export function searchAnywhere(img: Gray, t: Searchable): { score: number; cx: number; cy: number } {
+export function searchAnywhere(img: Gray, t: Searchable, yMinFrac = 0): { score: number; cx: number; cy: number } {
   let best = -1, bx = 0, by = 0;
   const n = t.w * t.h;
   const at = (x0: number, y0: number) => {
@@ -154,7 +154,7 @@ export function searchAnywhere(img: Gray, t: Searchable): { score: number; cx: n
     return varr < 1e-3 || t.norm < 1e-3 ? -1 : cross / (Math.sqrt(varr) * t.norm);
   };
   // Coarse pass every 3 px, then refine around the best spot.
-  for (let y = 0; y + t.h <= img.h; y += 3) for (let x = 0; x + t.w <= img.w; x += 3) { const s = at(x, y); if (s > best) { best = s; bx = x; by = y; } }
+  for (let y = Math.floor(yMinFrac * img.h); y + t.h <= img.h; y += 3) for (let x = 0; x + t.w <= img.w; x += 3) { const s = at(x, y); if (s > best) { best = s; bx = x; by = y; } }
   for (let y = Math.max(0, by - 3); y <= Math.min(img.h - t.h, by + 3); y++) for (let x = Math.max(0, bx - 3); x <= Math.min(img.w - t.w, bx + 3); x++) { const s = at(x, y); if (s > best) { best = s; bx = x; by = y; } }
   return { score: best, cx: (bx + t.w / 2) / img.w, cy: (by + t.h / 2) / img.h };
 }
