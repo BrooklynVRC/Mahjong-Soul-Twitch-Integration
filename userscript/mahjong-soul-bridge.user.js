@@ -9,6 +9,9 @@
 // @match        https://game.maj-soul.net/*
 // @run-at       document-start
 // @grant        none
+// @homepageURL  https://github.com/BrooklynVRC/Mahjong-Soul-Twitch-Integration
+// @downloadURL  https://raw.githubusercontent.com/BrooklynVRC/Mahjong-Soul-Twitch-Integration/main/userscript/mahjong-soul-bridge.user.js
+// @updateURL    https://raw.githubusercontent.com/BrooklynVRC/Mahjong-Soul-Twitch-Integration/main/userscript/mahjong-soul-bridge.user.js
 // ==/UserScript==
 
 /*

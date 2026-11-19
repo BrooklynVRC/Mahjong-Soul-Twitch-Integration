@@ -1,8 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { WebSocketServer, WebSocket } from 'ws';
-import { HINTS, ROOT, loadConfig, saveConfig, type Config } from './config.js';
+import { DATA_DIR, HINTS, loadConfig, saveConfig, type Config } from './config.js';
+import { USERSCRIPT, VERSION, openBrowser, pauseIfPackaged, readAsset } from './runtime.js';
 import { GameTracker, fill, type GameEvent } from './game.js';
 import { Twitch, type TwitchEvent } from './twitch.js';
 
@@ -86,7 +85,6 @@ function handleChat(text: string, _user: string, isMod: boolean, isBroadcaster: 
 const twitch = new Twitch(() => config, handleTwitchEvent, handleChat);
 
 // ---------------- HTTP ----------------
-const PUBLIC = resolve(ROOT, 'public');
 const TYPES: Record<string, string> = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
 
 function send(res: ServerResponse, code: number, body: unknown, type = 'application/json') {
@@ -95,7 +93,7 @@ function send(res: ServerResponse, code: number, body: unknown, type = 'applicat
 }
 function file(res: ServerResponse, name: string) {
   const ext = name.slice(name.lastIndexOf('.'));
-  try { send(res, 200, readFileSync(resolve(PUBLIC, name), 'utf8'), TYPES[ext] ?? 'text/plain'); } catch { send(res, 404, 'not found', 'text/plain'); }
+  try { send(res, 200, readAsset(name), TYPES[ext] ?? 'text/plain'); } catch { send(res, 404, 'not found', 'text/plain'); }
 }
 async function body(req: IncomingMessage): Promise<any> {
   let data = '';
@@ -112,6 +110,7 @@ const server = createServer(async (req, res) => {
       case 'GET /': return file(res, 'settings.html');
       case 'GET /ui.js': return file(res, 'ui.js');
       case 'GET /overlay': return file(res, 'overlay.html');
+      case `GET /${USERSCRIPT}`: return file(res, USERSCRIPT);
       case 'GET /api/config': return send(res, 200, { config, hints: HINTS });
       case 'POST /api/config': {
         const prev = JSON.stringify(config.twitch);
@@ -121,6 +120,7 @@ const server = createServer(async (req, res) => {
         return send(res, 200, { ok: true, config });
       }
       case 'GET /api/status': return send(res, 200, {
+        version: VERSION, dataDir: DATA_DIR,
         twitch: twitch.status, redirectUri: twitch.redirectUri,
         gameClients: gameIn.clients.size, overlayClients: overlayOut.clients.size, eventClients: eventsOut.clients.size,
         game: game.snapshot(),
@@ -163,10 +163,25 @@ server.on('upgrade', (req, socket, head) => {
   target.handleUpgrade(req, socket, head, (ws) => target.emit('connection', ws, req));
 });
 
+const home = `http://localhost:${config.port}/`;
+server.on('error', async (e: NodeJS.ErrnoException) => {
+  if (e.code === 'EADDRINUSE') {
+    console.log(`Port ${config.port} is already in use. The app is probably already running, so opening ${home}`);
+    openBrowser(home);
+  } else console.error('Server error:', e);
+  await pauseIfPackaged();
+  process.exit(1);
+});
+
 server.listen(config.port, '127.0.0.1', () => {
-  console.log(`Mahjong Soul × Twitch running`);
-  console.log(`  Settings: http://localhost:${config.port}/`);
-  console.log(`  Overlay:  http://localhost:${config.port}/overlay  (OBS Browser Source)`);
+  console.log(`Mahjong Soul × Twitch ${VERSION}  (keep this window open while streaming)`);
+  console.log(`  Settings: ${home}`);
+  console.log(`  Overlay:  ${home}overlay  (OBS Browser Source)`);
   console.log(`  Events:   ws://localhost:${config.port}/events`);
+  console.log(`  Data:     ${DATA_DIR}`);
+  if (config.openBrowserOnStart) openBrowser(home);
   void twitch.connect();
 });
+
+process.on('uncaughtException', (e) => console.error('[error]', e));
+process.on('unhandledRejection', (e) => console.error('[error]', e));

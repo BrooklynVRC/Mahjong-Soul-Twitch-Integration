@@ -50,13 +50,14 @@
       <div class="stat"><b>Session</b><span id="sSession">…</span></div>
     </div>
     <div class="row">
+      <a class="btn primary" href="/mahjong-soul-bridge.user.js" title="Needs Tampermonkey or Violentmonkey">Install userscript</a>
       <a class="btn primary" href="/auth/login">Connect Twitch</a>
       <button onclick="post('/api/twitch/reconnect')">Reconnect</button>
       <button onclick="post('/api/twitch/disconnect')">Disconnect</button>
       <a class="btn" href="/overlay" target="_blank">Open overlay</a>
       <button onclick="if(confirm('Reset session stats?')) post('/api/session/reset')">Reset session</button>
     </div>
-    <p class="help">Twitch app redirect URL: <code id="redirect">http://localhost:7701/auth/callback</code></p>
+    <p class="help">Twitch app redirect URL: <code id="redirect">http://localhost:7701/auth/callback</code> · Settings folder: <code id="dataDir"></code> · <span id="version"></span></p>
   </section>
 
   <section class="card">
@@ -92,6 +93,7 @@
     $('sRound').textContent = s.game.inGame ? (s.game.round || 'starting') : 'not in a game';
     $('sSession').textContent = `${s.game.session.games} games · avg ${s.game.session.avgPlace}`;
     $('redirect').textContent = s.redirectUri;
+    $('dataDir').textContent = s.dataDir; $('version').textContent = 'v' + s.version;
   }
   const P = [{ seat: 0, nickname: 'Me' }, { seat: 1, nickname: 'Riichi_Rina' }, { seat: 2, nickname: 'TanyaoTom' }, { seat: 3, nickname: 'DoraDan' }];
   const gameTests = {

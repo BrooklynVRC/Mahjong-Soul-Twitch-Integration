@@ -1,13 +1,15 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { dataDir } from './runtime.js';
 
-export const ROOT = resolve(import.meta.dirname, '..');
-const CONFIG_PATH = resolve(ROOT, 'config.json');
+export const DATA_DIR = dataDir('MahjongSoulTwitch');
+const CONFIG_PATH = resolve(DATA_DIR, 'config.json');
 
 const ev = (enabled: boolean, template: string) => ({ enabled, template });
 
 export const DEFAULT_CONFIG = {
   port: 7701,
+  openBrowserOnStart: true,
   twitch: {
     clientId: '',
     clientSecret: '',
@@ -80,6 +82,7 @@ export type Config = typeof DEFAULT_CONFIG;
 // Labels, help text and dropdown options for the settings page.
 export const HINTS: Record<string, unknown> = {
   port: { help: 'Restart the app after changing. The userscript sends to 7701 by default.' },
+  openBrowserOnStart: { label: 'Open this page when the app starts' },
   'twitch.clientId': { label: 'Client ID', help: 'From dev.twitch.tv/console. OAuth redirect URL: http://localhost:7701/auth/callback' },
   'twitch.clientSecret': { label: 'Client secret', secret: true },
   'twitch.channel': { label: 'Channel (login name)', help: 'Leave blank to use the account you connect with.' },
@@ -135,9 +138,9 @@ export function saveConfig(cfg: unknown): Config {
 }
 
 export function readJson<T>(name: string, fallback: T): T {
-  const p = resolve(ROOT, name);
+  const p = resolve(DATA_DIR, name);
   try { return existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')) : fallback; } catch { return fallback; }
 }
 export function writeJson(name: string, data: unknown) {
-  writeFileSync(resolve(ROOT, name), JSON.stringify(data, null, 2));
+  writeFileSync(resolve(DATA_DIR, name), JSON.stringify(data, null, 2));
 }
