@@ -11,6 +11,4 @@
 3. Optional: Discord Rich Presence (paste your Discord Application ID) and/or a channel webhook.
 4. OBS: add a Browser Source for `http://localhost:7701/overlay`.
 
-Settings live in `%APPDATA%\MahjongSoulTwitch`; templates are shared with the Lovense app in `%APPDATA%\MahjongSoulScreenReader`. Full guide: [README](https://github.com/BrooklynVRC/Mahjong-Soul-Twitch-Integration#readme).
-
-Toy integration: [Mahjong Soul Lovense Integration](https://github.com/BrooklynVRC/Mahjong-Soul-Lovense-Integration/releases/latest). It uses the same templates, so you only calibrate once.
+Settings live in `%APPDATA%\MahjongSoulTwitch`; screen reader calibration in `%APPDATA%\MahjongSoulScreenReader`. Full guide: [README](https://github.com/BrooklynVRC/Mahjong-Soul-Twitch-Integration#readme).
