@@ -20,7 +20,7 @@ export function dataDir(folder: string) {
   return dir;
 }
 
-/** Screen-reader templates + score layout, shared by the Twitch and Lovense apps. */
+/** Screen-reader templates + score layout. */
 export function sharedDir() {
   const dir = process.env.MSB_SHARED_DIR || resolve(process.env.APPDATA || dirname(process.execPath), 'MahjongSoulScreenReader');
   mkdirSync(dir, { recursive: true });

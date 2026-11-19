@@ -19,7 +19,7 @@ const localOrigins = () => [`http://localhost:${config.port}`, `http://127.0.0.1
 
 // ---------------- WebSocket hubs ----------------
 const overlayOut = new WebSocketServer({ noServer: true });  // us -> OBS overlay
-const eventsOut = new WebSocketServer({ noServer: true });   // us -> other apps (Lovense: Twitch viewer events)
+const eventsOut = new WebSocketServer({ noServer: true });   // us -> other local apps (Twitch viewer events)
 
 function broadcast(wss: WebSocketServer, data: unknown) {
   const text = JSON.stringify(data);

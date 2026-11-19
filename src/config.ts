@@ -147,7 +147,7 @@ export const HINTS: Record<string, unknown> = {
   'commands.cooldownSec': { label: 'Wait between answers (seconds)', help: 'Stops viewers spamming the same command.' },
   predictions: { label: '5. Predictions', closed: true, help: 'Opens a Twitch prediction when a match starts and pays it out when it ends. Needs Affiliate/Partner.' },
   'predictions.enabled': { label: 'Run predictions automatically' },
-  forwarding: { advanced: true, label: 'Share viewer events with the Lovense app', help: 'Leave on if you use the Lovense app with Twitch triggers.' },
+  forwarding: { advanced: true, label: 'Share viewer events with other apps', help: 'Sends bits, subs, redeems and chat commands to local apps on ws://localhost:7701/events. Leave on unless you know you do not need it.' },
   'twitch.clientId': { label: 'Client ID', placeholder: 'paste from dev.twitch.tv', help: 'From dev.twitch.tv/console. OAuth redirect URL: http://localhost:7701/auth/callback' },
   'twitch.clientSecret': { label: 'Client secret', secret: true },
   'twitch.channel': { label: 'Channel (login name)', help: 'Leave blank to use the account you connect with.' },
