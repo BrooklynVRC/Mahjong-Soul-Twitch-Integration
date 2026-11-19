@@ -110,8 +110,16 @@ test('works out events from score changes', () => {
   assert.deepEqual(classifyChange(s(25000, 25000, 25000, 25000), s(33000, 23000, 23000, 21000)).keys, ['my_win_tsumo']);
   assert.deepEqual(classifyChange(s(25000, 25000, 25000, 25000), s(23000, 33000, 23000, 21000)).keys, ['opponent_tsumo']);
   assert.deepEqual(classifyChange(s(25000, 25000, 25000, 25000), s(26500, 26500, 23500, 23500)).keys, ['draw']);
+  assert.deepEqual(classifyChange(s(25000, 24000, 25000, 25000), s(24000, 27000, 24000, 24000)).keys, ['draw'], '1 tenpai (seen in a real match)');
+  assert.deepEqual(classifyChange(s(25000, 25000, 25000, 25000), s(26000, 26000, 22000, 26000)).keys, ['draw'], '3 tenpai');
+  assert.deepEqual(classifyChange(s(35000, 35000, null, 35000), s(37000, 34000, null, 34000)).keys, ['draw'], '3-player 1 tenpai');
+  assert.equal(classifyChange(s(25000, 25000, 25000, 25000), s(24000, 25000, 24000, 24000)), null, 'three -1000s at once is not riichi');
   assert.deepEqual(classifyChange(s(35000, 35000, null, 35000), s(43000, 27000, null, 35000)).keys, ['my_win_ron'], '3-player');
   assert.equal(classifyChange(s(25000, 25000, 25000, 25000), s(25000, 25000, 25000, 25000)), null);
+  assert.equal(classifyChange(s(33000, 27000, 24000, 15000), s(40300, 14700, 24000, 15000)), null, 'half-finished count-up (seen in a real match) waits');
+  assert.equal(classifyChange(s(33000, 27000, 24000, 15000), s(33050, 27000, 24000, 15000)), null, 'not a multiple of 100');
+  assert.deepEqual(classifyChange(s(33000, 27000, 24000, 15000), s(46300, 14700, 23000, 15000)).keys, ['opponent_riichi', 'my_win_ron'], 'riichi in the same moment as a ron');
+  assert.deepEqual(classifyChange(s(24000, 25000, 25000, 25000), s(37300, 25000, 25000, 11700)).keys, ['my_win_ron'], 'ron collecting my own riichi stick');
   assert.ok(looksLikeGameStart(s(25000, 25000, 25000, 25000)));
   assert.ok(looksLikeGameStart(s(35000, 35000, null, 35000)));
   assert.ok(!looksLikeGameStart(s(25000, 24000, 25000, 25000)));

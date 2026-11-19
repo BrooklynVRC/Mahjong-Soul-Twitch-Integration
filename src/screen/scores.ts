@@ -68,6 +68,19 @@ export function segment(frame: Gray, rect: Rect, rot: Rotation = 0): Float32Arra
   const ink = new Uint8Array(total);
   for (let i = 0; i < total; i++) ink[i] = (inkBright ? img[i] > thr : img[i] <= thr) ? 1 : 0;
 
+  // Keep only the main band of text: drop separate strips above/below it (turn-indicator glow, panel edges).
+  const rowInk = new Array(H).fill(0);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) rowInk[y] += ink[y * W + x];
+  const bands: [number, number, number][] = []; // [start, end, ink]
+  for (let y = 0; y < H;) {
+    if (rowInk[y] > 0) { const s0 = y; let sum = 0; while (y < H && (rowInk[y] > 0 || (y + 1 < H && rowInk[y + 1] > 0 && y - s0 > 0))) { sum += rowInk[y]; y++; } bands.push([s0, y, sum]); }
+    else y++;
+  }
+  if (bands.length > 1) {
+    const main = bands.reduce((a, b) => ((b[1] - b[0]) * 2 + b[2] / W > (a[1] - a[0]) * 2 + a[2] / W ? b : a));
+    for (let y = 0; y < H; y++) if (y < main[0] || y >= main[1]) for (let x = 0; x < W; x++) ink[y * W + x] = 0;
+  }
+
   // Column runs with ink = characters.
   const colInk = new Array(W).fill(0);
   for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) colInk[x] += ink[y * W + x];
@@ -171,9 +184,14 @@ export function readScore(frame: Gray, region: ScoreRegion, glyphs: Prepared[], 
   if (!parts.length || parts.length > 8) return null;
   let s = '', worst = 1;
   for (const p of parts) {
-    let best = -1, ch = '';
-    for (const g of glyphs) { const c = ncc(p, g.v); if (c > best) { best = c; ch = g.ch; } }
+    // Best match per character; reject a glyph that looks almost equally like two different digits
+    // (typically a digit that hasn't been taught yet) instead of guessing.
+    const per = new Map<string, number>();
+    for (const g of glyphs) { const c = ncc(p, g.v); if (c > (per.get(g.ch) ?? -2)) per.set(g.ch, c); }
+    const ranked = [...per.entries()].sort((x, y) => y[1] - x[1]);
+    const [ch, best] = ranked[0] ?? ['', -1];
     if (best < minConfidence) return null;
+    if (ranked.length > 1 && best - ranked[1][1] < 0.04) return null;
     worst = Math.min(worst, best);
     s += ch;
   }
@@ -200,7 +218,8 @@ export function placement(scores: Partial<Record<Seat, number | null>>): number 
 
 /**
  * What a settled score change means, from "my" point of view. Cosmetics can't fool this: it only
- * uses the numbers. Returns the event keys to fire (possibly several, e.g. double ron).
+ * uses the numbers. Returns null when the change doesn't add up (a misread or a half-finished count-up
+ * animation), so the caller waits for a cleaner reading. May return several keys (e.g. riichi + win).
  */
 export function classifyChange(before: Partial<Record<Seat, number | null>>, after: Partial<Record<Seat, number | null>>): { keys: string[]; note: string } | null {
   const d: [Seat, number][] = [];
@@ -209,28 +228,43 @@ export function classifyChange(before: Partial<Record<Seat, number | null>>, aft
     if (typeof a === 'number' && typeof b === 'number' && a !== b) d.push([s, b - a]);
   }
   if (!d.length) return null;
+  if (d.some(([, v]) => v % 100 !== 0)) return null; // real payments are in hundreds
   const note = d.map(([s, v]) => `${s} ${v > 0 ? '+' : ''}${v}`).join(', ');
+  const who = (s: Seat, mine: string, theirs: string) => (s === 'me' ? mine : theirs);
   const gain = d.filter(([, v]) => v > 0), loss = d.filter(([, v]) => v < 0);
+  const players = SEATS.filter((s) => typeof after[s] === 'number').length;
 
-  // Riichi: exactly one player pays the 1,000 stick and nothing else changes.
-  if (!gain.length && loss.length === 1 && loss[0][1] === -1000) return { keys: [loss[0][0] === 'me' ? 'my_riichi' : 'opponent_riichi'], note };
-  if (!gain.length && loss.length >= 2 && loss.every(([, v]) => v === -1000)) return { keys: loss.map(([s]) => (s === 'me' ? 'my_riichi' : 'opponent_riichi')), note };
+  // Riichi: one or two players pay the 1,000 stick and nothing else changes.
+  if (!gain.length && loss.length <= 2 && loss.every(([, v]) => v === -1000)) return { keys: loss.map(([s]) => who(s, 'my_riichi', 'opponent_riichi')), note };
+  if (!gain.length) return null;
 
-  // Exhaustive draw: several players gain the noten payments (3,000 or 2,000 split between them).
-  const notenStep = new Set([1000, 1500, 2000, 3000]);
-  if (gain.length >= 2 && d.every(([, v]) => notenStep.has(Math.abs(v)))) return { keys: ['draw'], note };
+  // Exhaustive draw: the noten payments are fixed (3,000 total in 4-player, 2,000 in 3-player), shared
+  // equally by the tenpai players and paid equally by the noten players.
+  const pool = players === 3 ? 2000 : 3000;
+  const sumG = gain.reduce((t, [, v]) => t + v, 0), sumL = loss.reduce((t, [, v]) => t - v, 0);
+  if (loss.length && sumG === pool && sumL === pool && gain.length + loss.length === players
+    && gain.every(([, v]) => v === gain[0][1]) && loss.every(([, v]) => v === loss[0][1])) return { keys: ['draw'], note };
 
-  if (!gain.length || !loss.length) return null;
-  // Win: winners gained, payers lost. One payer = ron; several = tsumo.
-  const big = gain.filter(([, v]) => v >= 1000);
-  if (!big.length) return null;
-  const keys: string[] = [];
-  if (loss.length === 1) {
-    const payer = loss[0][0];
-    for (const [w] of big) keys.push(w === 'me' ? 'my_win_ron' : payer === 'me' ? 'dealt_in' : 'opponent_ron_other');
+  // Win. A player who lost exactly 1,000 next to bigger payments put down a riichi stick in the same moment.
+  let payers = loss, riichi: [Seat, number][] = [];
+  if (loss.length >= 2 && loss.some(([, v]) => v === -1000) && loss.some(([, v]) => v < -1000)) {
+    riichi = loss.filter(([, v]) => v === -1000);
+    payers = loss.filter(([, v]) => v < -1000);
+  }
+  if (!payers.length) return null;
+  const paid = payers.reduce((t, [, v]) => t - v, 0) + riichi.length * 1000;
+  // Winners collect what was paid plus any riichi sticks on the table (0–6 of them).
+  const extra = sumG - paid;
+  if (extra < 0 || extra > 6000 || extra % 1000 !== 0) return null;
+  const winners = gain.filter(([, v]) => v >= 1000);
+  if (!winners.length) return null;
+  const keys = riichi.map(([s]) => who(s, 'my_riichi', 'opponent_riichi'));
+  if (payers.length === 1) {
+    const payer = payers[0][0];
+    for (const [w] of winners) keys.push(w === 'me' ? 'my_win_ron' : payer === 'me' ? 'dealt_in' : 'opponent_ron_other');
   } else {
-    const w = big.sort((a, b) => b[1] - a[1])[0][0];
-    keys.push(w === 'me' ? 'my_win_tsumo' : 'opponent_tsumo');
+    if (winners.length !== 1) return null; // only one player can tsumo
+    keys.push(who(winners[0][0], 'my_win_tsumo', 'opponent_tsumo'));
   }
   return { keys: [...new Set(keys)], note };
 }

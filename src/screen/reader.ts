@@ -29,7 +29,7 @@ export const SCREEN_DEFAULTS = {
   bufferSeconds: 20,
   detection: { searchMarginPct: 8, defaultThreshold: 0.8, defaultCooldownSec: 6, confirmFrames: 1, rearmMargin: 0.05 },
   scores: {
-    enabled: true, minConfidence: 0.6, stableFrames: 3, settleSeconds: 1.5, gameEndSeconds: 40, autoLearn: true,
+    enabled: true, minConfidence: 0.7, stableFrames: 3, settleSeconds: 3, gameEndSeconds: 40, autoLearn: true,
     zone: { x: 0.3, y: 0.18, w: 0.4, h: 0.6 },
   },
   calibration: { autoUpdate: true, url: 'https://raw.githubusercontent.com/BrooklynVRC/Mahjong-Soul-Twitch-Integration/main/calibration/default-pack.json' },
@@ -132,6 +132,7 @@ export class ScreenReader {
   private lastChange = 0;
   private lastScoresSeen = 0;
   private lastReinforce: Record<string, number> = {};
+  private lastNote = '';
   state: GameState = { inGame: false, since: null, mode: null, scores: emptyRow(), place: null, lastResult: null, players: 0 };
 
   constructor(private o: ReaderOptions) {
@@ -294,17 +295,21 @@ export class ScreenReader {
       }
       if (changed) this.saveLayout();
     }
-    if (this.candidateCount === Math.max(1, sc.stableFrames) && row.me !== null && readable >= 2) {
-      const next = { ...(this.stable ?? emptyRow()) };
-      for (const seat of SEATS) if (row[seat] !== null) next[seat] = row[seat];
+    // Only complete readings count (every taught seat readable), so a covered or unreadable box can't fake a change.
+    const taught = SEATS.filter((s) => this.layout.regions[s]);
+    const complete = taught.length >= 2 && taught.every((s) => row[s] !== null);
+    if (this.candidateCount === Math.max(1, sc.stableFrames) && complete) {
+      const next = { ...row };
       if (!this.stable || !sameRow(next, this.stable)) { this.stable = next; this.lastChange = now; this.onStable(now); }
     }
     // Group changes for a moment, then decide what happened.
     if (this.stable && this.settled && !sameRow(this.stable, this.settled) && now - this.lastChange >= sc.settleSeconds * 1000) {
-      const before = this.settled; this.settled = { ...this.stable };
-      const what = classifyChange(before, this.settled);
-      if (what) for (const k of what.keys) this.emit(k, 'scores', null, frame, 'scores', `(${what.note})`);
-      else this.record({ key: 'unknown', name: 'scores', score: null, manual: false }, frame, 'scores', `score change not recognised (${SEATS.filter((s) => before[s] !== this.settled![s]).map((s) => `${s} ${before[s]}→${this.settled![s]}`).join(', ')})`);
+      const before = this.settled, after = { ...this.stable };
+      const what = classifyChange(before, after);
+      const desc = SEATS.filter((s) => before[s] !== after[s]).map((s) => `${s} ${before[s]}→${after[s]}`).join(', ');
+      if (what) { this.settled = after; for (const k of what.keys) this.emit(k, 'scores', null, frame, 'scores', `(${what.note})`); }
+      else if (now - this.lastChange > 20000) { this.settled = after; this.record({ key: 'unknown', name: 'scores', score: null, manual: false }, frame, 'scores', `accepted new scores without an event (${desc})`); }
+      else if (this.lastNote !== desc) { this.lastNote = desc; this.record({ key: 'unknown', name: 'scores', score: null, manual: false }, frame, 'scores', `doesn't add up yet, waiting (${desc})`); }
     }
     // No scores for a while: the match is over.
     if (this.state.inGame && this.lastScoresSeen && now - this.lastScoresSeen > sc.gameEndSeconds * 1000) this.endGame('(score panel gone)');
