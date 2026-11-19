@@ -34,12 +34,26 @@
   #saveMsg { color: var(--muted); }
   code { background:#0f1116; padding:1px 5px; border-radius:4px; }
   @media (max-width: 600px) { .field { grid-template-columns: 1fr; } .field .help { grid-column: 1; } }
+
+  .gs { display:grid; gap:8px; }
+  .gs .st { display:flex; gap:12px; align-items:flex-start; padding:10px 12px; border-radius:8px; background:#131820; border:1px solid transparent; }
+  .gs .st.next { border-color: var(--accent); }
+  .gs .n { width:26px; height:26px; flex:none; border-radius:50%; display:grid; place-items:center; font-weight:700; background:#2a2e3a; }
+  .gs .st.done .n { background: var(--ok); color:#06150d; }
+  .gs .tx { flex:1; } .gs .tx > b { display:block; } .gs .tx > span { color: var(--muted); font-size: 13px; }
+  .gs code { user-select: all; }
+  .copy { margin-left:6px; padding:1px 8px; font-size:12px; }
 </style>
 </head>
 <body>
 <main>
   <h1>Mahjong Soul × Twitch</h1>
   <p class="sub">Reads your Mahjong Soul game from the screen and drives Twitch chat, an OBS overlay, chat commands, predictions and Discord.</p>
+
+  <section class="card">
+    <h2>Getting started</h2>
+    <div class="gs" id="gs"></div>
+  </section>
 
   <section class="card">
     <h2>Status</h2>
@@ -94,9 +108,24 @@
   }
   async function testHook() { $('hookMsg').textContent = 'Sending…'; const r = await post('/api/test/webhook'); $('hookMsg').textContent = r.ok ? 'Sent ✓ (save settings first if you just pasted the URL)' : (r.error || 'failed'); }
   const dot = (on, text) => `<span class="dot ${on ? 'on' : ''}"></span>${esc(text)}`;
+
+  function copy(text, btn) { navigator.clipboard?.writeText(text).then(() => { const o = btn.textContent; btn.textContent = 'Copied ✓'; setTimeout(() => (btn.textContent = o), 1500); }); }
+  function steps(list) {
+    const next = list.findIndex((s) => !s.done && !s.optional);
+    document.getElementById('gs').innerHTML = list.map((s, i) => `<div class="st ${s.done ? 'done' : ''} ${i === next ? 'next' : ''}"><div class="n">${s.done ? '✓' : i + 1}</div><div class="tx"><b>${s.title}${s.optional ? ' <span>(optional)</span>' : ''}</b><span>${s.done ? (s.doneText || 'Done.') : s.how}</span></div></div>`).join('');
+  }
   async function refresh() {
     const s = await fetch('/api/status').then((r) => r.json()).catch(() => null);
     if (!s) return;
+    const ov = `http://localhost:${location.port}/overlay`;
+    steps([
+      { title: 'Open Mahjong Soul', done: s.screen.capturing, doneText: 'The game is being read.', how: 'Start Mahjong Soul (Steam). Keep it windowed or borderless; it can be behind other windows but not minimized.' },
+      { title: 'Connect Twitch', done: s.twitch.startsWith('connected'), doneText: s.twitch,
+        how: `① Go to <a href="https://dev.twitch.tv/console/apps/create" target="_blank">dev.twitch.tv → Register Your Application</a>. Name: anything. OAuth Redirect URL: <code>${s.redirectUri}</code><button class="copy" onclick="copy('${s.redirectUri}', this)">Copy</button>. Category: Chat Bot.<br>② Copy its <b>Client ID</b> and a new <b>Client Secret</b> into "1. Twitch login" below and press <b>Save settings</b>.<br>③ Click <b>Connect Twitch</b> and allow it.` },
+      { title: 'Add the overlay to OBS', optional: true, done: s.overlayClients > 0, doneText: 'The overlay is open in OBS.', how: `In OBS: Sources → + → Browser → URL <code>${ov}</code><button class="copy" onclick="copy('${ov}', this)">Copy</button>, width 600, height 300.` },
+      { title: 'Show it on Discord', optional: true, done: s.discord.startsWith('connected'), doneText: s.discord, how: 'Open "6. Discord" below and follow the steps there.' },
+      { title: 'Try it', optional: true, done: false, how: 'Press the buttons under "Test without playing" to see messages in chat and on the overlay.' },
+    ]);
     const sc = s.screen, st = sc.state, v = s.vars;
     $('sGame').textContent = st.inGame ? `${v.mode} · ${st.place ? v.place : 'in a match'}${v.elapsed ? ' · ' + v.elapsed : ''}` : v.placeText;
     $('sScreen').innerHTML = dot(sc.capturing && sc.templates > 0, sc.capturing ? `${sc.templates} templates${sc.scoresTaught ? ' · scores ✓' : ' · no score boxes'}${sc.detecting ? '' : ' · paused'}` : sc.status);

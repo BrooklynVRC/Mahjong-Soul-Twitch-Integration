@@ -33,10 +33,19 @@
 
   function render(container, cfg, hints, onChange) {
     container.innerHTML = '';
-    walk(container, cfg, '', hints, onChange, () => render(container, cfg, hints, onChange), 0);
+    const again = () => render(container, cfg, hints, onChange);
+    const normal = {}, advanced = {};
+    for (const k of Object.keys(cfg)) ((hints[k] || {}).advanced ? advanced : normal)[k] = cfg[k];
+    walk(container, normal, '', hints, onChange, again, 0, cfg);
+    if (Object.keys(advanced).length) {
+      const box = el('details', { class: 'group' }, el('summary', {}, 'Advanced (you can ignore this)'));
+      walk(box, advanced, '', hints, onChange, again, 1, cfg);
+      container.append(box);
+    }
   }
 
-  function walk(parent, obj, path, hints, onChange, rerender, depth) {
+  function walk(parent, obj, path, hints, onChange, rerender, depth, root) {
+    if (root) obj = new Proxy(obj, { get: (o, k) => root[k], set: (o, k, v) => { root[k] = v; return true; } });
     for (const key of Object.keys(obj)) {
       const p = path ? path + '.' + key : key;
       const h = hintFor(hints, p);
@@ -56,7 +65,7 @@
         box.append(el('button', { type: 'button', class: 'small', onclick: () => { val.push(clone(h.template !== undefined ? h.template : (val[0] !== undefined ? val[0] : ''))); onChange(); rerender(); } }, '+ Add'));
         parent.append(box);
       } else if (val && typeof val === 'object') {
-        const box = el('details', { class: 'group', open: depth < 1 ? '' : undefined }, el('summary', {}, label));
+        const box = el('details', { class: 'group', open: depth < 1 && !h.closed ? '' : undefined }, el('summary', {}, label));
         if (h.help) box.append(el('p', { class: 'help' }, h.help));
         walk(box, val, p, hints, onChange, rerender, depth + 1);
         parent.append(box);
