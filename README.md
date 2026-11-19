@@ -109,4 +109,6 @@ npm run package      # release\MahjongSoul-Twitch.exe
 
 **Making a release:** bump `version` in package.json, commit, then push a tag like `v2.0.1`. GitHub Actions builds the app and publishes the release.
 
+Companion app: [Mahjong Soul Lovense Integration](https://github.com/BrooklynVRC/Mahjong-Soul-Lovense-Integration) (Lovense Remote or Intiface Central).
+
 MIT licensed. Not affiliated with Yostar or Mahjong Soul.
