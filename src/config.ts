@@ -2,7 +2,6 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { dataDir } from './runtime.js';
 import { EVENT_KEYS } from './screen/keys.js';
-import { SCREEN_DEFAULTS, SCREEN_HINTS } from './screen/reader.js';
 
 export const DATA_DIR = dataDir('MahjongSoulTwitch');
 const CONFIG_PATH = resolve(DATA_DIR, 'config.json');
@@ -112,7 +111,6 @@ export const DEFAULT_CONFIG = {
     enabled: true,
     chatCommandsOnly: true,
   },
-  screen: SCREEN_DEFAULTS,
 };
 
 export type Config = typeof DEFAULT_CONFIG;
@@ -156,9 +154,7 @@ export const HINTS: Record<string, unknown> = {
   'discord.webhook.url': { label: 'Webhook URL', secret: true },
   'discord.webhook.events': { label: 'Post these' },
   'forwarding': { help: 'Shares Twitch events (bits, subs, redeems, chat commands) on ws://localhost:7701/events so the Lovense app can react to viewers.' },
-  'screen': { label: 'Screen reader', help: 'Teach banners and score boxes on the Screen reader page.' },
 };
-for (const [k, v] of Object.entries(SCREEN_HINTS)) HINTS[`screen.${k}`] = v;
 for (const group of ['announcements.events', 'overlay.feedEvents', 'discord.webhook.events'])
   for (const [k, label] of Object.entries(labels)) HINTS[`${group}.${k}`] = { label };
 

@@ -1,0 +1,8 @@
+{
+  "app": "mahjong-soul-screen-reader",
+  "version": 3,
+  "packVersion": 0,
+  "note": "Built-in calibration. Replaced with a real calibration once the screen reader has been taught.",
+  "templates": [],
+  "scores": { "regions": {}, "glyphs": [] }
+}

@@ -30,7 +30,12 @@ export function sharedDir() {
 /** Reads a bundled text file from public/. */
 export function readAsset(name: string): string {
   if (PACKAGED) return (require('node:sea') as typeof import('node:sea')).getAsset(name, 'utf8');
-  return readFileSync(resolve(SRC_ROOT, 'public', name), 'utf8');
+  return readFileSync(resolve(SRC_ROOT, name === 'default-pack.json' ? 'calibration' : 'public', name), 'utf8');
+}
+
+/** The calibration pack bundled with this build (null if none). */
+export function builtinPack(): string | null {
+  try { return readAsset('default-pack.json'); } catch { return null; }
 }
 
 /** The window-capture helper: the desktop host exe run with --capture. */

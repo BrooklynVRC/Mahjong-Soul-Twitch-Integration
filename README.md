@@ -25,24 +25,42 @@ The screen reader gets the game's picture the same way **OBS Window Capture and 
 
 Closing the window quits the app.
 
-## Calibrating the screen reader
+## Calibration: done once, for everyone
 
-The reader learns from your own screen, so it works with any resolution, language or skin. Everything you teach is shared with the Lovense app.
+The apps ship with a **built-in calibration**, and keep it up to date online. Most people never calibrate anything. Calibration is shared by the Twitch and Lovense apps (in `%APPDATA%MahjongSoulScreenReader`), so teaching in either one sets up both.
 
-**Banners** (tab *2a*):
-1. When a banner appears (RIICHI, RON, TSUMO, the draw banner, the final results), click **Freeze**. It keeps the last 20 seconds, so you can click it afterwards.
-2. Slide to the clearest frame, drag a box tightly around the banner's word, pick the event and click **Save banner template**.
-3. Check the live bar crosses the yellow threshold mark when the banner shows, and use **Scan frozen frames** to tune it.
+**How it reads the game.** The core is the **four point totals** in the centre panel, read from a full-resolution zoom of that area. Score changes give almost everything, and they don't care about skins or riichi effects:
 
-**Who did it.** You have two ways:
-- **Easiest:** teach one *Riichi / Ron / Tsumo (anyone)* banner each, plus the score boxes. The reader works out who it was from the score change: a riichi costs that player exactly 1,000, and a win shows who gained and who paid. So it tells *my ron* from *an opponent's ron*, and spots when *I* dealt in.
-- **Per side:** teach separate banners for each side of the table (*My riichi* at the bottom, *Opponent riichi* on the others, and so on).
+| What changes | What it means |
+|---|---|
+| One player −1,000, nothing else | that player declared **riichi** |
+| One player gains, one pays | **ron** (my ron / an opponent's / **I dealt in**) |
+| One player gains, everyone pays | **tsumo** |
+| Two or more gain small amounts | **draw** (noten payments) |
+| Everyone on the starting score | **game start** |
+| Score panel gone for a while | **game over**, final place = last placement |
 
-**Score boxes** (tab *2b*): freeze any moment with the centre score panel visible. Drag a tight box around one player's score, pick whose it is, type the number shown and click **Teach**. Do all four seats; scores with different digits teach more of them. After that, the app reads all four scores live. From them it gets your **current placement**, the **lead changes** and **who riichi'd or won**. Being in a game, and for how long, comes from the scores being on screen.
+Your **live placement** and the **lead changes** come from the same numbers. Banner templates are optional extras for things scores can't show: yakuman, calls, round start, the game mode name, and instant results screens.
 
-**Game mode**: box the room or mode name that shows when a match loads. Save it as *Game mode* and **name it after the mode**, e.g. "Gold Room · East". Chat and Discord show that name.
+**It works the same at any window size.** The reader crops the title bar and borders, uses the 16:9 game area, and normalizes every box. Windowed, borderless and fullscreen at any resolution all look alike to it.
 
-The screen reader page also has detection snapshots (see exactly what fired), template export and import, a pause switch, and tuning settings: frames to confirm, re-arm margin, position tolerance and digit confidence.
+### Calibrating (the one-time setup)
+
+1. Open **Screen reader & calibration**. The **Setup** card shows each step, with a **Do it** button for the next one.
+2. Play a match. Whenever something useful is on screen (the scores, a banner), press **F8**. It saves the last 5 seconds, even while you're in the game.
+3. Back in the app, click an F8 bookmark. Switch the picture to **Zoom (scores)**, then for each seat box the score, type the number shown, and click **Teach**. Start with your own score. The other seats are drawn sideways or upside down; the rotation is detected automatically.
+4. Teach a few different scores until all digits 0–9 are known; the Setup card lists what's missing. After that, the reader keeps learning by itself from clear readings.
+5. Optional: box the mode name shown when a match loads, save it as *Game mode* and name it (e.g. "Gold Room · East"). Add any extra banners from the chips.
+
+### Sharing your calibration with everyone
+
+From the repo, with the apps closed:
+
+```powershell
+npm run calibration:publish
+```
+
+This writes `calibration/default-pack.json` in both repos. Commit and push, and every app with *Get calibration updates online* (on by default) picks it up. Each new release bundles it too. **Export calibration** and **Import** on the screen reader page do the same by hand.
 
 ## Discord
 

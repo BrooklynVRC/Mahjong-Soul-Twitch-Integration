@@ -3,7 +3,11 @@
 // and Discord screen share do. It never opens, injects into, or sends input/messages to the game.
 // Works while the window is covered or unfocused; a minimized window can't be captured.
 //
-// Protocol (stdin/stdout, one line each):  "cap <width>"  ->  "OK <base64 24-bit BMP>"  |  "ERR <message>"
+// Protocol (stdin/stdout, one line each):
+//   "cap <width> [zx zy zw zh]"  ->  "OK <base64 BMP of the game area at <width>> [<base64 BMP of the zoom area at full resolution>]"
+//                                |  "ERR <message>"
+// The optional zoom area (0..1 fractions of the game area) is returned at native resolution, so small text like
+// the centre score panel stays sharp.
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Vortice.Direct3D;
@@ -34,6 +38,12 @@ static class Native
     public static extern int CreateDirect3D11DeviceFromDXGIDevice(IntPtr dxgiDevice, out IntPtr graphicsDevice);
     [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
     [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr hWnd);
+    [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
+    [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
+    [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr hWnd, out RECT r);
+    [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr hWnd, ref POINT p);
+    [DllImport("dwmapi.dll")] public static extern int DwmGetWindowAttribute(IntPtr hWnd, int attr, out RECT r, int size);
+    [DllImport("user32.dll")] public static extern bool SetProcessDpiAwarenessContext(IntPtr value);
 }
 
 static class CaptureMode
@@ -54,10 +64,13 @@ static class CaptureMode
     static Windows.Graphics.SizeInt32 poolSize;
     static ID3D11Texture2D? staging;      // holds the most recent frame
     static int contentW, contentH;
+    static bool keepAspect = true;   // crop to the 16:9 game area (removes letterbox/pillarbox)
 
     public static int Run(string[] args)
     {
         for (int i = 0; i < args.Length - 1; i++) if (args[i] == "--process") processName = args[i + 1];
+        if (args.Contains("--no-aspect")) keepAspect = false;
+        try { Native.SetProcessDpiAwarenessContext(new IntPtr(-4)); } catch { } // per-monitor v2: real pixel coordinates
         try { InitDevice(); }
         catch (Exception e) { Console.WriteLine("ERR could not start Direct3D: " + e.Message); return 1; }
 
@@ -69,7 +82,13 @@ static class CaptureMode
             if (parts[0] == "quit") break;
             if (parts[0] != "cap") { Console.WriteLine("ERR unknown command"); continue; }
             int width = parts.Length > 1 && int.TryParse(parts[1], out var w) ? Math.Clamp(w, 64, 3840) : 480;
-            try { Console.WriteLine("OK " + Convert.ToBase64String(Capture(width))); }
+            double[]? zone = null;
+            if (parts.Length >= 6)
+            {
+                var z = parts.Skip(2).Take(4).Select(p => double.TryParse(p, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : double.NaN).ToArray();
+                if (z.All(v => !double.IsNaN(v)) && z[2] > 0.01 && z[3] > 0.01) zone = z;
+            }
+            try { var (main, zoom) = Capture(width, zone); Console.WriteLine("OK " + Convert.ToBase64String(main) + (zoom != null ? " " + Convert.ToBase64String(zoom) : "")); }
             catch (Exception e) { Console.WriteLine("ERR " + e.Message.Replace('\r', ' ').Replace('\n', ' ')); }
             Console.Out.Flush();
         }
@@ -122,7 +141,7 @@ static class CaptureMode
         staging?.Dispose(); staging = null; contentW = contentH = 0;
     }
 
-    static byte[] Capture(int outW)
+    static (byte[] main, byte[]? zoom) Capture(int outW, double[]? zone)
     {
         lock (Gate)
         {
@@ -164,15 +183,52 @@ static class CaptureMode
                 }
             }
             if (staging == null || contentW <= 0 || contentH <= 0) throw new Exception("waiting for the first frame");
-            return ToBmp(outW);
+            var (cx, cy, cw, ch) = GameArea();
+            var main = ToBmp(outW, cx, cy, cw, ch);
+            byte[]? zoom = null;
+            if (zone != null)
+            {
+                int zx = cx + (int)Math.Round(Math.Clamp(zone[0], 0, 1) * cw), zy = cy + (int)Math.Round(Math.Clamp(zone[1], 0, 1) * ch);
+                int zw = Math.Min((int)Math.Round(zone[2] * cw), cx + cw - zx), zh = Math.Min((int)Math.Round(zone[3] * ch), cy + ch - zy);
+                if (zw > 8 && zh > 8) zoom = ToBmp(Math.Min(zw, 1600), zx, zy, zw, zh);
+            }
+            return (main, zoom);
         }
     }
 
-    // Box-filter downscale of the staging texture into a 24-bit bottom-up BMP.
-    static unsafe byte[] ToBmp(int outW)
+    // The part of the captured frame that is the game: the client area (no title bar or borders),
+    // then the centred 16:9 area. This makes windowed, borderless and fullscreen look the same.
+    static (int x, int y, int w, int h) GameArea()
     {
-        outW = Math.Min(outW, contentW);
-        int outH = Math.Max(1, (int)Math.Round(contentH * (double)outW / contentW));
+        int x = 0, y = 0, w = contentW, h = contentH;
+        try
+        {
+            if (Native.DwmGetWindowAttribute(hwnd, 9 /* DWMWA_EXTENDED_FRAME_BOUNDS */, out var fr, Marshal.SizeOf<Native.RECT>()) == 0
+                && Native.GetClientRect(hwnd, out var cr))
+            {
+                var pt = new Native.POINT();
+                Native.ClientToScreen(hwnd, ref pt);
+                double sx = contentW / (double)Math.Max(1, fr.Right - fr.Left), sy = contentH / (double)Math.Max(1, fr.Bottom - fr.Top);
+                int cx = (int)Math.Round((pt.X - fr.Left) * sx), cy = (int)Math.Round((pt.Y - fr.Top) * sy);
+                int cw = (int)Math.Round(cr.Right * sx), ch = (int)Math.Round(cr.Bottom * sy);
+                if (cw > 16 && ch > 16) { x = Math.Clamp(cx, 0, contentW - 1); y = Math.Clamp(cy, 0, contentH - 1); w = Math.Min(cw, contentW - x); h = Math.Min(ch, contentH - y); }
+            }
+        }
+        catch { }
+        if (keepAspect && w > 16 && h > 16)
+        {
+            double a = w / (double)h, target = 16.0 / 9.0;
+            if (a > target * 1.01) { int nw = (int)Math.Round(h * target); x += (w - nw) / 2; w = nw; }
+            else if (a < target / 1.01) { int nh = (int)Math.Round(w / target); y += (h - nh) / 2; h = nh; }
+        }
+        return (x, y, w, h);
+    }
+
+    // Box-filter downscale of the game area into a 24-bit bottom-up BMP.
+    static unsafe byte[] ToBmp(int outW, int cx, int cy, int cw, int ch)
+    {
+        outW = Math.Min(outW, cw);
+        int outH = Math.Max(1, (int)Math.Round(ch * (double)outW / cw));
         int stride = (outW * 3 + 3) & ~3;
         var bmp = new byte[54 + stride * outH];
         WriteHeader(bmp, outW, outH, stride);
@@ -184,11 +240,11 @@ static class CaptureMode
             int pitch = (int)map.RowPitch;
             for (int oy = 0; oy < outH; oy++)
             {
-                int y0 = oy * contentH / outH, y1 = Math.Max(y0 + 1, (oy + 1) * contentH / outH);
+                int y0 = cy + oy * ch / outH, y1 = Math.Max(y0 + 1, cy + (oy + 1) * ch / outH);
                 int dst = 54 + (outH - 1 - oy) * stride;
                 for (int ox = 0; ox < outW; ox++)
                 {
-                    int x0 = ox * contentW / outW, x1 = Math.Max(x0 + 1, (ox + 1) * contentW / outW);
+                    int x0 = cx + ox * cw / outW, x1 = Math.Max(x0 + 1, cx + (ox + 1) * cw / outW);
                     int sb = 0, sg = 0, sr = 0, n = 0;
                     for (int y = y0; y < y1; y += Math.Max(1, (y1 - y0) / 3))
                     {

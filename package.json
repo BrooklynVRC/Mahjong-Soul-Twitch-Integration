@@ -1,6 +1,6 @@
 {
   "name": "mahjong-soul-twitch",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Twitch + Discord integration for Mahjong Soul (Steam client): reads the game from the screen and drives chat, an OBS overlay, predictions and Discord Rich Presence.",
   "type": "module",
   "private": true,
@@ -11,7 +11,8 @@
     "build:host": "dotnet build host/MahjongSoulHost.csproj -c Release -nologo -v q",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test test/screen.test.mjs",
-    "package": "node scripts/package.mjs"
+    "package": "node scripts/package.mjs",
+    "calibration:publish": "node scripts/publish-calibration.mjs"
   },
   "engines": {
     "node": ">=20"

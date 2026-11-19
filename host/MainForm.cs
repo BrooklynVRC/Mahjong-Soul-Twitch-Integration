@@ -18,6 +18,10 @@ sealed class MainForm : Form
     readonly StreamWriter log;
     readonly Queue<string> lastLines = new();
     Process? server;
+    System.Windows.Forms.Timer? titleTimer;
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr hWnd, int id, uint mods, uint vk);
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+    const int HotkeyId = 0x4D53;
     string? url;
     bool weStarted, webviewFailed, closing;
 
@@ -150,6 +154,35 @@ sealed class MainForm : Form
     }
 
     void Log(string line) { try { lock (log) log.WriteLine(line); } catch { } }
+
+    // F8 anywhere (e.g. while playing): save the last few seconds in the screen reader to teach from later.
+    // A normal Windows hotkey: it doesn't touch the game. If both apps are open, only one gets the key,
+    // so the bookmark is sent to both.
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        if (!RegisterHotKey(Handle, HotkeyId, 0x4000 /* MOD_NOREPEAT */, 0x77 /* F8 */)) Log("F8 is already taken (probably by the other Mahjong Soul app); it will save bookmarks for both.");
+    }
+    protected override void OnHandleDestroyed(EventArgs e) { UnregisterHotKey(Handle, HotkeyId); base.OnHandleDestroyed(e); }
+    protected override void WndProc(ref Message m)
+    {
+        if (m.Msg == 0x0312 /* WM_HOTKEY */ && m.WParam == (IntPtr)HotkeyId) _ = BookmarkAsync();
+        base.WndProc(ref m);
+    }
+    async Task BookmarkAsync()
+    {
+        int ok = 0;
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+        foreach (var port in new[] { 7701, 7702 })
+            try { if ((await http.PostAsync($"http://127.0.0.1:{port}/api/bookmark", null)).IsSuccessStatusCode) ok++; } catch { }
+        if (ok == 0) return;
+        Text = $"{info.Title}  ·  ✓ bookmark saved (F8)";
+        System.Media.SystemSounds.Asterisk.Play();
+        titleTimer?.Stop();
+        titleTimer = new System.Windows.Forms.Timer { Interval = 2500 };
+        titleTimer.Tick += (_, _) => { Text = info.Title; titleTimer!.Stop(); };
+        titleTimer.Start();
+    }
 
     static void OpenExternal(string u)
     {

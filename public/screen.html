@@ -8,7 +8,7 @@
   :root { --bg:#10141a; --card:#19202a; --line:#2a3340; --text:#e6ebf2; --muted:#93a0b2; --accent:#3fb6a8; --ok:#4fc98a; --bad:#ff6b6b; --warn:#f0b84a; --score:#6bb6ff; }
   * { box-sizing: border-box; }
   body { margin:0; font:15px/1.45 "Segoe UI", system-ui, sans-serif; background:var(--bg); color:var(--text); }
-  main { max-width: 1160px; margin: 0 auto; padding: 20px 16px 80px; }
+  main { max-width: 1180px; margin: 0 auto; padding: 20px 16px 80px; }
   h1 { font-size: 22px; margin: 0; } h2 { font-size: 16px; margin: 0 0 10px; }
   .top { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom: 6px; }
   .sub { color: var(--muted); margin: 0 0 16px; }
@@ -23,8 +23,8 @@
   button:hover, .btn:hover { border-color: var(--accent); } .primary { background:var(--accent); border-color:var(--accent); color:#041312; font-weight:600; }
   .small { padding:3px 9px; font-size:13px; } .danger { color: var(--bad); } .paused { background: var(--warn); border-color: var(--warn); color:#1a1200; font-weight:600; }
   .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:10px; }
-  .grid { display:grid; grid-template-columns: minmax(0, 3fr) minmax(300px, 2fr); gap: 16px; align-items:start; }
-  @media (max-width: 880px) { .grid { grid-template-columns: 1fr; } }
+  .grid { display:grid; grid-template-columns: minmax(0, 3fr) minmax(310px, 2fr); gap: 16px; align-items:start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
   canvas { width:100%; background:#000; border-radius:8px; cursor: crosshair; display:block; }
   select, input[type=text], input[type=number], input[type=password] { background:#0d1117; color:var(--text); border:1px solid #333d4b; border-radius:6px; padding:5px 8px; }
   input[type=range] { width: 100%; }
@@ -32,8 +32,14 @@
   #hint { display:none; margin-top:12px; padding:10px 12px; border-radius:8px; background:#2b2414; border:1px solid #5a4a20; color:#f6dfa4; }
   #modeBar { margin-top:8px; padding:6px 10px; border-radius:6px; font-size:13px; background:#131820; color:var(--muted); }
   #modeBar.frozen { background:#142a28; color:#9fe5db; } #modeBar.snapshot { background:#2a1f33; color:#e0c4f5; }
-  .checklist { display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:12px; font-size:14px; }
-  .checklist span::before { content:'○ '; color: var(--muted); } .checklist span.done::before { content:'✓ '; color: var(--ok); }
+  .steps { display:grid; gap:6px; margin-top: 4px; }
+  .step { display:flex; gap:10px; align-items:center; padding:8px 10px; border-radius:8px; background:#131820; }
+  .step .ico { width: 22px; text-align:center; font-weight:700; color: var(--muted); }
+  .step.done .ico { color: var(--ok); } .step.next { outline: 1px solid var(--accent); }
+  .step .txt { flex:1; } .step .txt small { display:block; color: var(--muted); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .chip { font-size:12px; padding:2px 8px; border-radius:999px; background:#131820; border:1px solid var(--line); color: var(--muted); cursor:pointer; }
+  .chip.on { border-color: var(--ok); color: var(--ok); } .chip.auto { border-style: dashed; }
   .tabs { display:flex; gap:6px; margin-bottom:10px; } .tabs button.on { background: var(--accent); color:#041312; border-color: var(--accent); font-weight:600; }
   .tpl { display:grid; grid-template-columns: 110px 1fr; gap: 10px; padding:10px 0; border-top:1px solid var(--line); }
   .tpl img { width:110px; image-rendering: pixelated; border-radius:4px; background:#000; }
@@ -41,18 +47,17 @@
   .tpl label { font-size:13px; color: var(--muted); display:flex; gap:4px; align-items:center; }
   .tpl input[type=number] { width: 70px; }
   .tpl .scan { font-size:12px; color: var(--muted); margin-top:4px; } .tpl .scan.good { color: var(--ok); } .tpl .scan.bad { color: var(--warn); }
-  .badge { font-size:11px; background:#5a4a20; color:#f6dfa4; border-radius:4px; padding:1px 6px; }
   .bar { height:8px; background:#0d1117; border-radius:4px; overflow:hidden; position:relative; width: 100%; margin-top:6px; }
   .bar i { position:absolute; left:0; top:0; bottom:0; background: var(--muted); }
   .bar i.hit { background: var(--ok); } .bar b { position:absolute; top:-2px; bottom:-2px; width:2px; background: var(--warn); }
-  #log { font-size: 13px; max-height: 240px; overflow:auto; background:#0d1117; border-radius:8px; padding: 4px; }
+  #log { font-size: 13px; max-height: 260px; overflow:auto; background:#0d1117; border-radius:8px; padding: 4px; }
   #log .entry { display:flex; gap:8px; align-items:baseline; padding:4px 6px; border-radius:5px; cursor:pointer; flex-wrap:wrap; }
   #log .entry:hover { background:#1b2430; } #log time { color: var(--muted); font-family: Consolas, monospace; }
+  .via { font-size:11px; border-radius:4px; padding:0 5px; background:#26303d; color: var(--muted); }
   table.scores { width:100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
   table.scores td, table.scores th { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align:left; }
   table.scores th { color: var(--muted); font-weight: 500; font-size: 12px; }
-  .digits { font-family: Consolas, monospace; letter-spacing: 3px; }
-  .digits .no { color: #4a5464; }
+  .digits { font-family: Consolas, monospace; letter-spacing: 3px; } .digits .no { color: #4a5464; }
   details.group { border:1px solid var(--line); border-radius:8px; padding: 6px 12px; margin: 8px 0; background:#141a22; }
   details.group > summary { cursor:pointer; font-weight:600; padding: 4px 0; }
   .field { display:grid; grid-template-columns: 220px 1fr; gap: 4px 12px; align-items:center; padding: 6px 0; border-top: 1px solid #1f2731; }
@@ -60,58 +65,63 @@
   .field input[type=checkbox] { width:18px; height:18px; justify-self:start; }
   .array-item { border-left: 3px solid var(--accent); padding: 4px 0 8px 10px; margin: 8px 0; }
   p.help { margin: 4px 0 8px; }
+  kbd { background:#0d1117; border:1px solid #333d4b; border-bottom-width:2px; border-radius:4px; padding:0 5px; font-size:12px; }
   @media (max-width: 600px) { .field { grid-template-columns: 1fr; } .field .help { grid-column: 1; } }
 </style>
 </head>
 <body>
 <main>
   <div class="top"><a href="/">← Back</a><h1>Screen Reader</h1></div>
-  <p class="sub">Watches the game picture like a screen share. It never touches the game. Teach it banners and where the scores are, and it works out what happens, your live place, the mode and your time in game.</p>
+  <p class="sub">Watches the game picture like a screen share and never touches the game. It reads the four scores and works out riichi, wins, deal-ins, draws, your live place and game start/end from how they change. Calibration is shared by the Twitch and Lovense apps.</p>
 
   <section class="card">
     <div class="status">
       <div class="stat"><b>Picture</b><span id="sSource">…</span></div>
       <div class="stat"><b>Game</b><span id="sGame" class="big">…</span></div>
-      <div class="stat"><b>Speed</b><span id="sFps">…</span></div>
+      <div class="stat"><b>Calibration</b><span id="sCal">…</span></div>
       <div class="stat"><b>Detection</b><span id="sDetect">…</span></div>
     </div>
-    <div class="row"><button id="pauseBtn">Pause detection</button><span class="help">Pausing stops events and score tracking; the picture keeps updating.</span></div>
-    <div class="checklist" id="checklist"></div>
+    <div class="row">
+      <button id="pauseBtn">Pause detection</button>
+      <button id="builtinBtn">Use built-in calibration</button>
+      <button id="onlineBtn">Check for calibration update</button>
+      <a class="btn" href="/api/screen/templates/export" download>Export calibration</a>
+      <label class="btn">Import<input type="file" id="importFile" accept=".json,application/json" hidden></label>
+      <span id="calMsg" class="help"></span>
+    </div>
     <div id="hint"></div>
+  </section>
+
+  <section class="card">
+    <h2>Setup</h2>
+    <p class="help" style="margin-top:0">Most people never need this: the built-in calibration covers it. If you do calibrate, press <kbd>F8</kbd> while playing whenever something useful is on screen (a banner, or just the scores). It saves the last 5 seconds to teach from here afterwards.</p>
+    <div class="steps" id="steps"></div>
+    <p class="help" style="margin-top:12px">Optional banners (dashed = already covered by the scores, so only needed for faster or extra detection). Click one to teach it:</p>
+    <div class="chips" id="chips"></div>
   </section>
 
   <div class="grid">
     <section class="card">
-      <h2>1. Catch something on screen</h2>
-      <p class="help">When a banner appears (RIICHI, RON, TSUMO, results…) click <b>Freeze</b>. It keeps the last <span class="bufS">20</span> seconds, so there's no rush. Slide to the clearest frame and drag a box. For scores, freeze any moment where the score panel is visible.</p>
-      <canvas id="view" width="960" height="540"></canvas>
+      <div class="row" style="margin-top:0;justify-content:space-between">
+        <h2 style="margin:0">Picture</h2>
+        <div class="tabs" style="margin:0"><button id="viewFull" class="on small">Full</button><button id="viewZoom" class="small">Zoom (scores)</button></div>
+      </div>
+      <canvas id="view" width="960" height="540" style="margin-top:8px"></canvas>
       <div id="modeBar">Live</div>
       <div class="row">
         <button class="primary" id="freezeBtn">Freeze last <span class="bufS">20</span> s</button>
         <button id="liveBtn" style="display:none">Back to live</button>
+        <span class="help" id="bmLabel"></span>
       </div>
       <input type="range" id="scrub" min="0" max="0" value="0" disabled>
+      <div class="chips" id="bookmarks"></div>
     </section>
 
     <section class="card">
-      <div class="tabs"><button id="tabBanner" class="on">2a. Banner</button><button id="tabScore">2b. Score box</button></div>
+      <div class="tabs"><button id="tabScore" class="on">Score box</button><button id="tabBanner">Banner</button></div>
 
-      <div id="paneBanner">
-        <div class="row" style="margin-top:0"><select id="tKey" style="width:100%"></select></div>
-        <p class="help" id="tHint"></p>
-        <div class="row"><input type="text" id="tName" placeholder="Name, e.g. Riichi (right side)" style="flex:1"></div>
-        <div class="row"><button class="primary" id="saveTpl">Save banner template</button><span id="saveMsg" class="help"></span></div>
-        <details class="group"><summary>Tips</summary>
-          <p class="help">• Box only the part that looks the same every time, like the banner's word.<br>
-          • <b>Easiest:</b> teach one "Riichi / Ron / Tsumo (anyone)" banner each and teach the score boxes. The reader then works out who it was from the score change.<br>
-          • Or teach per-side banners (e.g. "My riichi" on your side, "Opponent riichi" on each other side).<br>
-          • <b>Game mode:</b> box the room/mode name shown when a match loads and name the template after it, e.g. "Gold Room · East".<br>
-          • After saving, use <b>Scan frozen frames</b> to check the score jumps on the banner frames only.</p>
-        </details>
-      </div>
-
-      <div id="paneScore" style="display:none">
-        <p class="help" style="margin-top:0">Drag a tight box around <b>one player's score</b> in the centre panel, pick whose it is, type the number exactly as shown and click <b>Teach</b>. Do it for all four seats. Teaching scores that use different digits teaches more of them.</p>
+      <div id="paneScore">
+        <p class="help" style="margin-top:0">On a frozen frame where the scores show, drag a tight box around <b>one</b> score, type the number exactly as shown and click <b>Teach</b>. Sideways and upside-down scores are fine: the rotation is detected automatically. Start with your own score.</p>
         <div class="row" style="margin-top:0">
           <select id="sSeat"><option value="me">My score (bottom)</option><option value="right">Right player</option><option value="top">Top player</option><option value="left">Left player</option></select>
           <input type="text" id="sText" placeholder="e.g. 25000" style="width:110px" inputmode="numeric">
@@ -120,35 +130,38 @@
         <div class="row"><span id="scoreMsg" class="help"></span></div>
         <p class="help">Digits learned: <span class="digits" id="digits"></span></p>
         <table class="scores"><thead><tr><th>Seat</th><th>Box</th><th>Reading now</th><th>Counted</th><th></th></tr></thead><tbody id="scoreRows"></tbody></table>
-        <div class="row"><button class="small danger" id="clearScores">Forget all score boxes & digits</button></div>
+        <div class="row"><button class="small danger" id="clearScores">Forget score boxes & digits</button></div>
       </div>
 
-      <h2 style="margin-top:16px">Detections</h2>
-      <p class="help" style="margin-top:0">Click one to see the exact picture that triggered it. You can teach from it too.</p>
-      <div id="log"><div class="help" style="padding:6px">Nothing detected yet.</div></div>
+      <div id="paneBanner" style="display:none">
+        <div class="row" style="margin-top:0"><select id="tKey" style="width:100%"></select></div>
+        <p class="help" id="tHint"></p>
+        <div class="row"><input type="text" id="tName" placeholder="Name (for game mode: the mode, e.g. Gold Room · East)" style="flex:1"></div>
+        <div class="row"><button class="primary" id="saveTpl">Save banner</button><span id="saveMsg" class="help"></span></div>
+        <p class="help">Box only the part that looks the same every time, like the banner's word.</p>
+      </div>
+
+      <h2 style="margin-top:16px">What it saw</h2>
+      <p class="help" style="margin-top:0">Click an entry to see the exact picture. You can teach from it too.</p>
+      <div id="log"><div class="help" style="padding:6px">Nothing yet.</div></div>
     </section>
   </div>
 
   <section class="card">
-    <h2>3. Banner templates</h2>
-    <p class="help">The bar shows how closely the current picture matches each template; the yellow mark is the threshold. Raise it if it fires by mistake, lower it if it misses. Templates for the same event share one cooldown. Templates and score boxes are shared by the Twitch and Lovense apps.</p>
-    <div class="row">
-      <button id="scanBtn">Scan frozen frames</button>
-      <a class="btn" href="/api/screen/templates/export" download>Export</a>
-      <label class="btn">Import<input type="file" id="importFile" accept=".json,application/json" hidden></label>
-      <span id="tplMsg" class="help"></span>
-    </div>
+    <h2>Banner templates</h2>
+    <p class="help">The bar shows how closely the current picture matches; the yellow mark is the threshold. <button class="small" id="scanBtn">Scan frozen frames</button> <span id="tplMsg" class="help"></span></p>
     <div id="tpls"></div>
   </section>
 
   <section class="card">
     <h2>Test without playing</h2>
-    <p class="help">Sends the event to this app as if the banner had been seen. Works even while detection is paused.</p>
+    <p class="help">Sends the event to this app as if it had been seen.</p>
     <div class="row" id="fireBtns"></div>
   </section>
 
   <section class="card">
     <h2>Screen reader settings</h2>
+    <p class="help">Shared by both apps.</p>
     <div id="form"></div>
     <div class="row"><button class="primary" id="saveCfg">Save</button><button id="obsList">List OBS sources</button><span id="cfgMsg" class="help"></span></div>
   </section>
@@ -160,8 +173,9 @@
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const ORD = ['1st', '2nd', '3rd', '4th'];
   const SEAT_LABEL = { me: 'Me', right: 'Right', top: 'Top', left: 'Left' };
+  const ROT_LABEL = { 0: 'upright', 90: 'sideways', 180: 'upside down', 270: 'sideways' };
   let cfg, hints, keys = [], st = null;
-  let mode = 'live', frameIdx = 0, frameCount = 0, snapIdx = -1, tab = 'banner';
+  let mode = 'live', frameIdx = 0, frameCount = 0, snapIdx = -1, view = 'full';
   let img = null, sel = null, drag = null, scan = {};
   const canvas = $('view'), g = canvas.getContext('2d');
 
@@ -170,7 +184,12 @@
     return r.json().catch(() => ({}));
   }
 
-  // ---------- view ----------
+  // ---------- coordinates: everything is stored relative to the full game picture ----------
+  const zone = () => st?.zone ?? { x: 0, y: 0, w: 1, h: 1 };
+  const toFull = (r) => view === 'zoom' ? { x: zone().x + r.x * zone().w, y: zone().y + r.y * zone().h, w: r.w * zone().w, h: r.h * zone().h } : r;
+  const toView = (r) => view === 'zoom' ? { x: (r.x - zone().x) / zone().w, y: (r.y - zone().y) / zone().h, w: r.w / zone().w, h: r.h / zone().h } : r;
+
+  // ---------- picture ----------
   function setMode(m) {
     mode = m;
     $('liveBtn').style.display = m === 'live' ? 'none' : '';
@@ -178,82 +197,125 @@
     $('modeBar').className = m;
     $('modeBar').textContent = m === 'live' ? 'Live: drag a box to teach from the current picture'
       : m === 'frozen' ? `Frozen: frame ${frameIdx + 1} of ${frameCount}. Slide to pick a frame, then drag a box`
-      : `Detection snapshot: ${st?.detections?.[snapIdx]?.label ?? ''}. Drag a box to teach from it`;
+      : `Snapshot: ${st?.detections?.[snapIdx]?.label ?? ''}. Drag a box to teach from it`;
   }
+  function setView(v) { view = v; $('viewFull').classList.toggle('on', v === 'full'); $('viewZoom').classList.toggle('on', v === 'zoom'); sel = null; loadFrame(); }
+  $('viewFull').onclick = () => setView('full'); $('viewZoom').onclick = () => setView('zoom');
+
   async function loadFrame() {
-    const url = mode === 'frozen' ? `/api/screen/frame/${frameIdx}` : mode === 'snapshot' ? `/api/screen/detection/${snapIdx}` : '/api/screen/frame/latest';
+    const kind = view === 'zoom' && mode !== 'snapshot' ? 'zoom' : 'frame';
+    const url = mode === 'frozen' ? `/api/screen/${kind}/${frameIdx}` : mode === 'snapshot' ? `/api/screen/detection/${snapIdx}` : `/api/screen/${kind}/latest`;
     const r = await fetch(url + '?t=' + Date.now()).catch(() => null);
-    if (!r || !r.ok) return;
+    if (!r || !r.ok) { if (view === 'zoom' && kind === 'zoom') { img = null; draw('No zoom picture yet (it starts once the reader is capturing).'); } return; }
     img = await createImageBitmap(await r.blob());
-    const W = Math.min(1920, img.width * (img.width < 800 ? 2 : 1));
+    const W = Math.min(1920, Math.max(960, img.width));
     if (canvas.width !== W) { canvas.width = W; canvas.height = Math.round(W * img.height / img.width); }
+    if (Math.abs(canvas.height - Math.round(canvas.width * img.height / img.width)) > 2) canvas.height = Math.round(canvas.width * img.height / img.width);
     draw();
   }
   function box(rect, color, width, label) {
-    const W = canvas.width, H = canvas.height;
+    const v = toView(rect), W = canvas.width, H = canvas.height;
+    if (v.x > 1 || v.y > 1 || v.x + v.w < 0 || v.y + v.h < 0) return;
     g.strokeStyle = color; g.lineWidth = width;
-    g.strokeRect(rect.x * W, rect.y * H, rect.w * W, rect.h * H);
+    g.strokeRect(v.x * W, v.y * H, v.w * W, v.h * H);
     if (label) {
       g.font = '13px Segoe UI'; const tw = g.measureText(label).width + 8;
-      g.fillStyle = 'rgba(0,0,0,.7)'; g.fillRect(rect.x * W, Math.max(0, rect.y * H - 18), tw, 18);
-      g.fillStyle = '#fff'; g.fillText(label, rect.x * W + 4, Math.max(13, rect.y * H - 5));
+      g.fillStyle = 'rgba(0,0,0,.7)'; g.fillRect(v.x * W, Math.max(0, v.y * H - 18), tw, 18);
+      g.fillStyle = '#fff'; g.fillText(label, v.x * W + 4, Math.max(13, v.y * H - 5));
     }
   }
-  function draw() {
-    if (!img) { g.fillStyle = '#000'; g.fillRect(0, 0, canvas.width, canvas.height); g.fillStyle = '#93a0b2'; g.font = '20px Segoe UI'; g.fillText('Waiting for the game picture…', 30, 50); return; }
+  function draw(msg) {
+    if (!img) { g.fillStyle = '#000'; g.fillRect(0, 0, canvas.width, canvas.height); g.fillStyle = '#93a0b2'; g.font = '20px Segoe UI'; g.fillText(msg || 'Waiting for the game picture…', 30, 50); return; }
     g.drawImage(img, 0, 0, canvas.width, canvas.height);
+    if (view === 'full' && mode !== 'snapshot') box(zone(), 'rgba(107,182,255,.35)', 1, mode === 'live' ? 'zoom area' : null);
     for (const t of st?.templates ?? []) {
-      if (!t.enabled) continue;
+      if (!t.enabled || view === 'zoom') continue;
       const hit = mode === 'live' && t.score !== null && t.score >= t.threshold;
       box(t.rect, hit ? '#4fc98a' : 'rgba(240,184,74,.5)', hit ? 4 : 2, mode === 'live' ? `${t.name} ${t.score !== null ? t.score.toFixed(2) : ''}` : null);
     }
     const sc = st?.scores;
-    if (sc) for (const [seat, r] of Object.entries(sc.regions || {})) {
-      const v = sc.live?.[seat];
-      box(r, 'rgba(107,182,255,.85)', 2, mode === 'live' ? `${SEAT_LABEL[seat]}: ${v ?? '?'}` : SEAT_LABEL[seat]);
-    }
-    if (sel) { g.strokeStyle = '#3fb6a8'; g.lineWidth = 3; g.setLineDash([8, 5]); g.strokeRect(sel.x * canvas.width, sel.y * canvas.height, sel.w * canvas.width, sel.h * canvas.height); g.setLineDash([]); }
+    if (sc) for (const [seat, r] of Object.entries(sc.regions || {})) box(r, 'rgba(107,182,255,.9)', 2, `${SEAT_LABEL[seat]}${mode === 'live' ? ': ' + (sc.live?.[seat] ?? '?') : ''}`);
+    if (sel) { const v = sel; g.strokeStyle = '#3fb6a8'; g.lineWidth = 3; g.setLineDash([8, 5]); g.strokeRect(v.x * canvas.width, v.y * canvas.height, v.w * canvas.width, v.h * canvas.height); g.setLineDash([]); }
   }
   const pos = (e) => { const r = canvas.getBoundingClientRect(); return { x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) }; };
   canvas.addEventListener('pointerdown', (e) => { if (mode === 'live') freeze(); drag = pos(e); sel = null; canvas.setPointerCapture(e.pointerId); });
   canvas.addEventListener('pointermove', (e) => { if (!drag) return; const p = pos(e); sel = { x: Math.min(drag.x, p.x), y: Math.min(drag.y, p.y), w: Math.abs(p.x - drag.x), h: Math.abs(p.y - drag.y) }; draw(); });
   canvas.addEventListener('pointerup', () => { drag = null; if (sel && (sel.w < 0.004 || sel.h < 0.004)) sel = null; draw(); });
 
-  async function freeze() {
-    const r = await api('POST', '/api/screen/freeze', { frozen: true });
+  async function freeze(bookmark) {
+    const r = await api('POST', '/api/screen/freeze', bookmark !== undefined ? { bookmark } : { frozen: true });
     frameCount = r.frames || 0; frameIdx = Math.max(0, frameCount - 1);
     $('scrub').max = Math.max(0, frameCount - 1); $('scrub').value = frameIdx;
+    $('bmLabel').textContent = bookmark !== undefined ? 'Showing an F8 bookmark' : '';
     setMode('frozen'); loadFrame();
   }
   $('freezeBtn').onclick = () => { sel = null; freeze(); };
-  $('liveBtn').onclick = async () => { await api('POST', '/api/screen/freeze', { frozen: false }); sel = null; scan = {}; setMode('live'); loadFrame(); };
+  $('liveBtn').onclick = async () => { await api('POST', '/api/screen/freeze', { frozen: false }); sel = null; scan = {}; $('bmLabel').textContent = ''; setMode('live'); loadFrame(); };
   $('scrub').oninput = (e) => { frameIdx = Number(e.target.value); setMode('frozen'); loadFrame(); };
   const where = () => mode === 'snapshot' ? { snapshot: snapIdx } : mode === 'frozen' ? { frame: frameIdx } : { frame: 'latest' };
 
-  // ---------- tabs ----------
-  function setTab(t) { tab = t; $('tabBanner').classList.toggle('on', t === 'banner'); $('tabScore').classList.toggle('on', t === 'score'); $('paneBanner').style.display = t === 'banner' ? '' : 'none'; $('paneScore').style.display = t === 'score' ? '' : 'none'; }
-  $('tabBanner').onclick = () => setTab('banner'); $('tabScore').onclick = () => setTab('score');
+  // ---------- teaching ----------
+  function setTab(t) { $('tabBanner').classList.toggle('on', t === 'banner'); $('tabScore').classList.toggle('on', t === 'score'); $('paneBanner').style.display = t === 'banner' ? '' : 'none'; $('paneScore').style.display = t === 'score' ? '' : 'none'; }
+  $('tabBanner').onclick = () => { setTab('banner'); if (view === 'zoom') setView('full'); };
+  $('tabScore').onclick = () => { setTab('score'); if (view === 'full' && st?.hasZoom) setView('zoom'); };
 
   $('saveTpl').onclick = async () => {
     if (!sel) return ($('saveMsg').textContent = 'Drag a box on the picture first.');
+    if (view === 'zoom') return ($('saveMsg').textContent = 'Switch the picture to "Full" for banners.');
     const r = await api('POST', '/api/screen/templates', { ...where(), rect: sel, key: $('tKey').value, name: $('tName').value });
     $('saveMsg').textContent = r.ok ? `Saved ✓ "${r.template.name}"` : (r.error || 'failed');
     if (r.ok) { sel = null; $('tName').value = ''; await refresh(true); draw(); }
   };
   $('teachScore').onclick = async () => {
-    if (!sel) return ($('scoreMsg').textContent = 'Drag a tight box around one score first.');
-    const r = await api('POST', '/api/screen/scores/teach', { ...where(), rect: sel, seat: $('sSeat').value, text: $('sText').value });
-    $('scoreMsg').textContent = r.ok ? `Learned ${r.learned} characters ✓ It now reads this box as ${r.check ?? '?'}.` : (r.error || 'failed');
-    if (r.ok) { sel = null; $('sText').value = ''; const s = $('sSeat'); s.selectedIndex = (s.selectedIndex + 1) % s.options.length; await refresh(); draw(); }
+    if (!sel) return ($('scoreMsg').textContent = 'Drag a tight box around one score first (tip: use the Zoom view).');
+    if (mode === 'snapshot') return ($('scoreMsg').textContent = 'Use a frozen frame or an F8 bookmark for scores (snapshots have no zoom).');
+    const r = await api('POST', '/api/screen/scores/teach', { ...where(), rect: toFull(sel), seat: $('sSeat').value, text: $('sText').value });
+    $('scoreMsg').textContent = r.ok ? `Learned ${r.learned} characters ✓ (${ROT_LABEL[r.rot]}). It now reads this box as ${r.check ?? '?'}.` : (r.error || 'failed');
+    if (r.ok) { sel = null; $('sText').value = ''; await refresh(); pickNextSeat(); draw(); }
   };
+  function pickNextSeat() {
+    const taught = Object.keys(st?.scores?.regions ?? {});
+    const next = ['me', 'right', 'top', 'left'].find((s) => !taught.includes(s));
+    if (next) $('sSeat').value = next;
+  }
   $('clearScores').onclick = async () => { if (confirm('Forget all score boxes and learned digits?')) { await api('POST', '/api/screen/scores/clear'); refresh(); } };
 
   function renderScores() {
-    const sc = st.scores;
-    const learned = sc.learned || '';
+    const sc = st.scores, learned = sc.learned || '';
     $('digits').innerHTML = '0123456789-'.split('').map((c) => `<span class="${learned.includes(c) ? '' : 'no'}">${c}</span>`).join('') + ` <span class="help">(${sc.samples} samples)</span>`;
-    $('scoreRows').innerHTML = ['me', 'right', 'top', 'left'].map((s) => `<tr><td>${SEAT_LABEL[s]}</td><td>${sc.regions[s] ? '✓' : '<span class="help">not set</span>'}</td><td>${sc.live[s] ?? '<span class="help">–</span>'}</td><td>${sc.stable[s] ?? '<span class="help">–</span>'}</td><td>${sc.regions[s] ? `<button class="small" data-seat="${s}">remove</button>` : ''}</td></tr>`).join('');
+    $('scoreRows').innerHTML = ['me', 'right', 'top', 'left'].map((s) => {
+      const r = sc.regions[s];
+      return `<tr><td>${SEAT_LABEL[s]}</td><td>${r ? '✓ <span class="help">' + ROT_LABEL[r.rot ?? 0] + '</span>' : '<span class="help">not set</span>'}</td><td>${sc.live[s] ?? '<span class="help">–</span>'}</td><td>${sc.stable[s] ?? '<span class="help">–</span>'}</td><td>${r ? `<button class="small" data-seat="${s}">remove</button>` : ''}</td></tr>`;
+    }).join('');
     $('scoreRows').querySelectorAll('button[data-seat]').forEach((b) => (b.onclick = async () => { await api('POST', '/api/screen/scores/region', { seat: b.dataset.seat, rect: null }); refresh(); }));
+  }
+
+  // ---------- guided setup ----------
+  function renderSetup() {
+    const cov = st.coverage, ok = st.status.startsWith('capturing');
+    const others = cov.seats.filter((s) => s !== 'me');
+    const steps = [
+      { done: ok, title: 'Game picture', sub: ok ? st.status : 'Start Mahjong Soul (windowed or borderless, not minimized).' },
+      { done: cov.seats.includes('me'), title: 'Your score box', sub: 'Freeze (or press F8 in game) while scores show, switch to Zoom, box your score, type it, Teach.', act: () => { setTab('score'); $('sSeat').value = 'me'; setView('zoom'); } },
+      { done: others.length >= 2, title: "Other players' score boxes", sub: others.length ? `Done: ${others.map((s) => SEAT_LABEL[s]).join(', ')}. In 3-player games one seat stays empty; that's fine.` : 'Same as above for the right, top and left scores (they are rotated; that is handled for you).', act: () => { setTab('score'); pickNextSeat(); setView('zoom'); } },
+      { done: cov.missingDigits.length === 0, title: 'All digits 0–9', sub: cov.missingDigits.length ? `Still unseen: ${cov.missingDigits.join(' ')}. Teach any score containing them. The reader also keeps learning by itself.` : 'Every digit is known.', act: () => { setTab('score'); setView('zoom'); } },
+      { done: cov.keys.some((k) => k.key === 'game_mode' && k.template), title: 'Game mode (optional)', sub: 'Box the room/mode name shown when a match loads and name it, e.g. "Gold Room · East", for chat and Discord.', act: () => { setTab('banner'); $('tKey').value = 'game_mode'; $('tKey').onchange(); setView('full'); } },
+    ];
+    const next = steps.findIndex((s) => !s.done);
+    $('steps').innerHTML = '';
+    steps.forEach((s, i) => {
+      const el = document.createElement('div'); el.className = 'step' + (s.done ? ' done' : '') + (i === next ? ' next' : '');
+      el.innerHTML = `<span class="ico">${s.done ? '✓' : i + 1}</span><span class="txt">${esc(s.title)}<small>${esc(s.sub)}</small></span>`;
+      if (s.act && !s.done) el.append(SettingsUI.el('button', { class: 'small' + (i === next ? ' primary' : ''), onclick: s.act }, 'Do it'));
+      $('steps').append(el);
+    });
+    $('chips').innerHTML = '';
+    for (const k of cov.keys.filter((k) => k.key !== 'game_mode')) {
+      const c = SettingsUI.el('span', { class: 'chip' + (k.template ? ' on' : '') + (k.auto ? ' auto' : ''), title: k.auto ? 'Already detected from the scores' : 'Needs a banner template', onclick: () => { setTab('banner'); $('tKey').value = k.key; $('tKey').onchange(); setView('full'); } }, (k.template ? '✓ ' : '') + k.label);
+      $('chips').append(c);
+    }
+    $('bookmarks').innerHTML = st.bookmarks.length ? '' : '<span class="help">No F8 bookmarks yet. Press F8 while playing to save one.</span>';
+    for (const b of st.bookmarks) $('bookmarks').append(SettingsUI.el('span', { class: 'chip', onclick: () => freeze(b.index) }, `F8 · ${new Date(b.ts).toLocaleTimeString()}`));
   }
 
   // ---------- templates ----------
@@ -263,7 +325,7 @@
     const ids = list.map((t) => t.id + t.key + t.name).join();
     if (force || ids !== tplIds) {
       tplIds = ids;
-      $('tpls').innerHTML = list.length ? '' : '<p class="help">No templates yet. Catch a banner above.</p>';
+      $('tpls').innerHTML = list.length ? '' : '<p class="help">No banner templates. They are optional; the scores cover the main events.</p>';
       for (const t of list) {
         const row = document.createElement('div'); row.className = 'tpl'; row.dataset.id = t.id;
         row.innerHTML = `<img src="/api/screen/templates/${t.id}.bmp" alt="">
@@ -275,7 +337,6 @@
             <label><input type="checkbox" data-f="enabled" ${t.enabled ? 'checked' : ''}> on</label>
             <button class="small" data-act="fire">Test</button>
             <button class="small danger" data-act="del">Delete</button>
-            ${t.mismatchedWidth ? '<span class="badge">taught at a different width</span>' : ''}
           </div><div class="bar"><i></i><b></b></div><div class="scan"></div></div>`;
         row.querySelectorAll('[data-f]').forEach((inp) => inp.addEventListener('change', async () => {
           const v = inp.type === 'checkbox' ? inp.checked : inp.type === 'number' ? Number(inp.value) : inp.value;
@@ -311,24 +372,29 @@
     $('tplMsg').textContent = `Scanned ${r.frames} ${st.frozen ? 'frozen' : 'recent'} frames.`;
     showScan();
   };
+
+  // ---------- calibration packs ----------
+  $('builtinBtn').onclick = async () => { if (!confirm('Replace the current calibration with the built-in one?')) return; const r = await api('POST', '/api/screen/calibration/builtin'); $('calMsg').textContent = r.ok ? 'Built-in calibration loaded ✓' : (r.error || 'failed'); refresh(true); };
+  $('onlineBtn').onclick = async () => { $('calMsg').textContent = 'Checking…'; const r = await api('POST', '/api/screen/calibration/online'); $('calMsg').textContent = r.note || 'done'; refresh(true); };
   $('importFile').onchange = async (e) => {
     const f = e.target.files[0]; if (!f) return;
-    let data; try { data = JSON.parse(await f.text()); } catch { $('tplMsg').textContent = 'That file is not valid JSON.'; return; }
-    const replace = st.templates.length && confirm('Replace your current templates?\nOK = replace, Cancel = add to them.');
+    let data; try { data = JSON.parse(await f.text()); } catch { $('calMsg').textContent = 'That file is not valid JSON.'; return; }
+    const replace = confirm('Replace your current calibration with this file?\nOK = replace, Cancel = add to it.');
     const r = await api('POST', '/api/screen/templates/import', { data, mode: replace ? 'replace' : 'add' });
-    $('tplMsg').textContent = r.ok ? `Imported ${r.added} template(s)${r.skipped ? `, skipped ${r.skipped} invalid` : ''}${r.scores ? ' and score boxes' : ''}.` : (r.error || 'Import failed');
+    $('calMsg').textContent = r.ok ? `Imported ${r.added} template(s)${r.scores ? ' and score boxes' : ''}.` : (r.error || 'Import failed');
     e.target.value = ''; refresh(true);
   };
 
   // ---------- status ----------
   const dot = (on, text) => `<span class="dot ${on ? 'on' : ''}"></span>${esc(text)}`;
   const mins = (since) => { if (!since) return ''; const m = Math.floor((Date.now() - since) / 60000); return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`; };
+  const CAL = { builtin: 'Built-in', online: 'Online', custom: 'Custom (yours)', none: 'Not calibrated' };
   function renderLog() {
-    $('log').innerHTML = st.detections.length ? '' : '<div class="help" style="padding:6px">Nothing detected yet.</div>';
+    $('log').innerHTML = st.detections.length ? '' : '<div class="help" style="padding:6px">Nothing yet.</div>';
     for (const d of st.detections) {
       const row = document.createElement('div'); row.className = 'entry';
-      row.innerHTML = `<time>${new Date(d.ts).toLocaleTimeString()}</time><span>${esc(d.label)}</span><span class="help">${esc(d.name)}${d.score !== null ? ' · ' + d.score.toFixed(2) : d.manual ? ' · test' : ''}${d.note ? ' · ' + esc(d.note) : ''}</span>`;
-      if (d.hasFrame) row.onclick = () => { snapIdx = d.index; sel = null; setMode('snapshot'); loadFrame(); };
+      row.innerHTML = `<time>${new Date(d.ts).toLocaleTimeString()}</time><span>${esc(d.label)}</span><span class="via">${esc(d.via)}</span><span class="help">${d.score !== null ? d.score.toFixed(2) + ' ' : ''}${d.note ? esc(d.note) : ''}</span>`;
+      if (d.hasFrame) row.onclick = () => { snapIdx = d.index; sel = null; if (view === 'zoom') setView('full'); setMode('snapshot'); loadFrame(); };
       $('log').append(row);
     }
   }
@@ -340,39 +406,36 @@
     $('sSource').innerHTML = dot(ok, st.status);
     const s = st.state;
     $('sGame').textContent = s.inGame ? `In game${s.mode ? ' · ' + s.mode : ''}${s.place ? ' · ' + ORD[s.place - 1] : ''}${s.since ? ' · ' + mins(s.since) : ''}` : (s.lastResult ? `Lobby · last: ${ORD[s.lastResult - 1]}` : 'Not in a game');
-    $('sFps').textContent = `${st.fps.toFixed(1)} checks/s · ${st.analysisMs.toFixed(1)} ms each${st.pending ? ` · ${st.pending} waiting for scores` : ''}`;
-    const active = st.templates.filter((t) => t.enabled).length;
-    $('sDetect').innerHTML = st.detecting ? dot(active > 0, `${active} template${active === 1 ? '' : 's'} active`) : '<span class="dot"></span>paused';
+    $('sCal').innerHTML = dot(st.coverage.ready, `${CAL[st.calibration.source] ?? st.calibration.source}${st.calibration.version ? ' v' + st.calibration.version : ''}${st.coverage.ready ? '' : ' · incomplete'}`);
+    $('sDetect').innerHTML = st.detecting ? dot(ok, `${st.fps.toFixed(1)} checks/s · ${st.templates.filter((t) => t.enabled).length} banners`) : '<span class="dot"></span>paused';
     $('pauseBtn').textContent = st.detecting ? 'Pause detection' : 'Resume detection';
     $('pauseBtn').className = st.detecting ? '' : 'paused';
     $('hint').style.display = st.hint ? 'block' : 'none'; $('hint').textContent = st.hint || '';
-    const sc = st.scores;
-    const steps = [[ok, 'Game picture'], [active > 0, 'Banner templates'], [!!sc.regions.me && sc.samples > 0, 'Score boxes'], [st.detections.some((d) => d.score !== null), 'First real detection']];
-    $('checklist').innerHTML = steps.map(([d, t]) => `<span class="${d ? 'done' : ''}">${t}</span>`).join('');
     document.querySelectorAll('.bufS').forEach((e) => (e.textContent = st.bufferSeconds));
     const logKey = st.detections.map((d) => d.ts + (d.note || '')).join();
     if (logKey !== lastLog) { lastLog = logKey; renderLog(); }
     renderTemplates(forceTpl);
     renderScores();
+    renderSetup();
     if (mode !== 'live') draw();
   }
   $('pauseBtn').onclick = async () => { await api('POST', '/api/screen/detection', { enabled: !st.detecting }); refresh(); };
 
   // ---------- settings ----------
   const renderForm = () => SettingsUI.render($('form'), cfg, hints, () => ($('cfgMsg').textContent = 'Unsaved changes'));
-  $('saveCfg').onclick = async () => { const r = await api('POST', '/api/screen/config', cfg); $('cfgMsg').textContent = r.ok ? 'Saved ✓' : (r.error || 'failed'); if (r.ok) { cfg = r.config; renderForm(); } };
+  $('saveCfg').onclick = async () => { const r = await api('POST', '/api/screen/config', cfg); $('cfgMsg').textContent = r.ok ? 'Saved ✓ (both apps)' : (r.error || 'failed'); if (r.ok) { cfg = r.config; renderForm(); } };
   $('obsList').onclick = async () => { $('cfgMsg').textContent = 'Asking OBS…'; const r = await api('GET', '/api/screen/obs/sources'); $('cfgMsg').textContent = r.sources ? 'OBS sources: ' + r.sources.join(', ') : (r.error || 'failed'); };
 
   api('GET', '/api/screen/config').then((d) => {
     cfg = d.config; hints = d.hints; keys = d.keys;
     $('tKey').innerHTML = keys.map((k) => `<option value="${k.key}">${esc(k.label)}</option>`).join('');
-    const hint = () => ($('tHint').textContent = keys.find((k) => k.key === $('tKey').value)?.hint ?? '');
-    $('tKey').onchange = hint; hint();
+    $('tKey').onchange = () => ($('tHint').textContent = keys.find((k) => k.key === $('tKey').value)?.hint ?? '');
+    $('tKey').onchange();
     for (const k of keys) $('fireBtns').append(SettingsUI.el('button', { class: 'small', onclick: () => api('POST', '/api/screen/fire', { key: k.key }) }, k.label));
-    renderForm(); setMode('live'); refresh(true);
+    renderForm(); setMode('live'); refresh(true).then(pickNextSeat);
   });
-  setInterval(() => refresh(false), 500);
-  setInterval(() => { if (mode === 'live') loadFrame(); }, 350);
+  setInterval(() => refresh(false), 600);
+  setInterval(() => { if (mode === 'live') loadFrame(); }, 400);
 </script>
 </body>
 </html>

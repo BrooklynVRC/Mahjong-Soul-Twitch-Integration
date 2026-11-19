@@ -3,8 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 const { decodeBmpGray, encodeGrayBmp, cropTemplate, prepare, matchScore } = await import('../src/screen/image.ts');
-const { learn, readScore, prepareGlyphs, placement, emptyLayout, segment } = await import('../src/screen/scores.ts');
-const { KEYS, EVENT_KEYS, placeOf } = await import('../src/screen/keys.ts');
+const { learn, readScore, prepareGlyphs, placement, emptyLayout, segment, classifyChange, looksLikeGameStart } = await import('../src/screen/scores.ts');
+const { KEYS, placeOf } = await import('../src/screen/keys.ts');
 
 // Synthetic 480x270 frame: noise + a bright "banner" with text-like stripes.
 function frame(bannerX, bannerY, seed = 1) {
@@ -40,12 +40,21 @@ const FONT = {
   6: ['111', '100', '111', '101', '111'], 7: ['111', '001', '010', '010', '010'], 8: ['111', '101', '111', '101', '111'],
   9: ['111', '101', '111', '001', '111'], '-': ['000', '000', '111', '000', '000'],
 };
-function scoreFrame(text, x0 = 40, y0 = 30) {
-  const w = 400, h = 120, px = new Uint8Array(w * h).fill(30), S = 4;
+function scoreFrame(text, rot = 0) {
+  const S = 4, x0 = 40, y0 = 30, w = 400, h = 120, up = new Uint8Array(w * h).fill(30);
   [...text].forEach((ch, i) => FONT[ch].forEach((row, y) => [...row].forEach((on, x) => {
-    if (on === '1') for (let dy = 0; dy < S; dy++) for (let dx = 0; dx < S; dx++) px[(y0 + y * S + dy) * w + x0 + i * 16 + x * S + dx] = 230;
+    if (on === '1') for (let dy = 0; dy < S; dy++) for (let dx = 0; dx < S; dx++) up[(y0 + y * S + dy) * w + x0 + i * 16 + x * S + dx] = 230;
   })));
-  return { w, h, px, rect: { x: (x0 - 4) / w, y: (y0 - 4) / h, w: (text.length * 16 + 4) / w, h: 28 / h } };
+  const rect = { x: (x0 - 4) / w, y: (y0 - 4) / h, w: (text.length * 16 + 4) / w, h: 28 / h };
+  if (rot === 0) return { w, h, px: up, rect };
+  // Rotate the picture clockwise by rot degrees (what the game does for the other seats).
+  const W = rot === 180 ? w : h, H = rot === 180 ? h : w, px = new Uint8Array(W * H);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const [nx, ny] = rot === 90 ? [h - 1 - y, x] : rot === 180 ? [w - 1 - x, h - 1 - y] : [y, w - 1 - x];
+    px[ny * W + nx] = up[y * w + x];
+  }
+  const [rx, ry, rw, rh] = rot === 90 ? [1 - rect.y - rect.h, rect.x, rect.h, rect.w] : rot === 180 ? [1 - rect.x - rect.w, 1 - rect.y - rect.h, rect.w, rect.h] : [rect.y, 1 - rect.x - rect.w, rect.h, rect.w];
+  return { w: W, h: H, px, rect: { x: rx, y: ry, w: rw, h: rh } };
 }
 
 test('segments a score into characters', () => {
@@ -55,9 +64,28 @@ test('segments a score into characters', () => {
 
 test('learns digits from typed examples and reads new scores', () => {
   const layout = emptyLayout();
-  for (const t of ['25000', '31400', '-7600', '18900']) { const f = scoreFrame(t); learn(layout, f, f.rect, t); }
+  for (const t of ['25000', '31400', '-7600', '18900']) { const f = scoreFrame(t); learn(layout, f, f.rect, t, 'me'); }
   const glyphs = prepareGlyphs(layout);
-  for (const t of ['40300', '19700', '-2100', '5800']) { const f = scoreFrame(t); assert.equal(readScore(f, f.rect, glyphs), Number(t), t); }
+  for (const t of ['40300', '19700', '-2100', '5800']) { const f = scoreFrame(t); assert.equal(readScore(f, { ...f.rect, rot: 0 }, glyphs)?.value, Number(t), t); }
+});
+
+test('reads rotated scores and works out the rotation by itself', () => {
+  const layout = emptyLayout();
+  for (const t of ['25000', '31400', '-7600', '18900']) { const f = scoreFrame(t); learn(layout, f, f.rect, t, 'me'); }
+  for (const [seat, rot] of [['top', 180], ['right', 270], ['left', 90]]) {
+    const f = scoreFrame('34900', rot);
+    const r = learn(layout, f, f.rect, '34900', seat);
+    assert.equal(r.rot, rot, seat);
+    const g = scoreFrame('21800', rot);
+    assert.equal(readScore(g, { ...g.rect, rot: r.rot }, prepareGlyphs(layout))?.value, 21800, seat);
+  }
+});
+
+test('picks 90 vs 270 correctly even against the seat default', () => {
+  const layout = emptyLayout();
+  for (const t of ['25000', '31400', '-7600', '18900']) { const f = scoreFrame(t); learn(layout, f, f.rect, t, 'me'); }
+  const f = scoreFrame('34900', 90); // left-style rotation, taught as "right"
+  assert.equal(learn(layout, f, f.rect, '34900', 'right').rot, 90);
 });
 
 test('rejects a typed number with the wrong length', () => {
@@ -72,8 +100,25 @@ test('placement from scores', () => {
   assert.equal(placement({ me: null, right: 1, top: 2, left: 3 }), null);
 });
 
+test('works out events from score changes', () => {
+  const s = (me, right, top, left) => ({ me, right, top, left });
+  assert.deepEqual(classifyChange(s(25000, 25000, 25000, 25000), s(24000, 25000, 25000, 25000)).keys, ['my_riichi']);
+  assert.deepEqual(classifyChange(s(25000, 25000, 25000, 25000), s(25000, 24000, 25000, 25000)).keys, ['opponent_riichi']);
+  assert.deepEqual(classifyChange(s(25000, 25000, 25000, 25000), s(33000, 17000, 25000, 25000)).keys, ['my_win_ron']);
+  assert.deepEqual(classifyChange(s(25000, 25000, 25000, 25000), s(17000, 33000, 25000, 25000)).keys, ['dealt_in']);
+  assert.deepEqual(classifyChange(s(25000, 25000, 25000, 25000), s(25000, 33000, 17000, 25000)).keys, ['opponent_ron_other']);
+  assert.deepEqual(classifyChange(s(25000, 25000, 25000, 25000), s(33000, 23000, 23000, 21000)).keys, ['my_win_tsumo']);
+  assert.deepEqual(classifyChange(s(25000, 25000, 25000, 25000), s(23000, 33000, 23000, 21000)).keys, ['opponent_tsumo']);
+  assert.deepEqual(classifyChange(s(25000, 25000, 25000, 25000), s(26500, 26500, 23500, 23500)).keys, ['draw']);
+  assert.deepEqual(classifyChange(s(35000, 35000, null, 35000), s(43000, 27000, null, 35000)).keys, ['my_win_ron'], '3-player');
+  assert.equal(classifyChange(s(25000, 25000, 25000, 25000), s(25000, 25000, 25000, 25000)), null);
+  assert.ok(looksLikeGameStart(s(25000, 25000, 25000, 25000)));
+  assert.ok(looksLikeGameStart(s(35000, 35000, null, 35000)));
+  assert.ok(!looksLikeGameStart(s(25000, 24000, 25000, 25000)));
+});
+
 test('keys', () => {
-  assert.ok(EVENT_KEYS.length < KEYS.length, 'generic keys are excluded from app events');
+  assert.ok(KEYS.filter((k) => k.auto).length >= 10, 'most events come from the scores');
   assert.equal(placeOf('game_end_3'), 3);
   assert.equal(placeOf('my_riichi'), null);
 });

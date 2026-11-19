@@ -34,6 +34,7 @@ await build({
 console.log('2/4 making the server exe…');
 const assets = {};
 for (const f of readdirSync(resolve(root, 'public'))) assets[f] = resolve(root, 'public', f);
+assets['default-pack.json'] = resolve(root, 'calibration/default-pack.json');
 const seaConfig = resolve(out, 'sea-config.json');
 writeFileSync(seaConfig, JSON.stringify({
   main: resolve(out, 'app.cjs'), output: resolve(out, 'sea-prep.blob'),

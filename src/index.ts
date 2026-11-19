@@ -6,12 +6,12 @@ import { Twitch, type TwitchEvent } from './twitch.js';
 import { DiscordPresence, buildActivity, postWebhook } from './discord.js';
 import { ScreenReader } from './screen/reader.js';
 import { keyLabel, placeOf, type Detection, type GameState } from './screen/keys.js';
-import { VERSION, captureExe, pauseIfPackaged, readAsset, sharedDir, showUi } from './runtime.js';
+import { VERSION, builtinPack, captureExe, pauseIfPackaged, readAsset, sharedDir, showUi } from './runtime.js';
 
 let config: Config = loadConfig();
 const session = new SessionTracker();
 const cooldowns = new Map<string, number>();
-let gameState: GameState = { inGame: false, since: null, mode: null, scores: { me: null, right: null, top: null, left: null }, place: null, lastResult: null };
+let gameState: GameState = { inGame: false, since: null, mode: null, scores: { me: null, right: null, top: null, left: null }, place: null, lastResult: null, players: 0 };
 const recent: { ts: number; key: string; label: string; text: string | null }[] = [];
 const labelOf = (k: string) => ALL_KEYS.find((x) => x.key === k)?.label ?? keyLabel(k);
 
@@ -44,7 +44,7 @@ async function handleKey(key: string) {
   broadcast(overlayOut, overlayState());
   recent.unshift({ ts: Date.now(), key, label: labelOf(key), text }); recent.length = Math.min(recent.length, 15);
 
-  if (key === 'game_start') await twitch.startPrediction(4);
+  if (key === 'game_start') await twitch.startPrediction(gameState.players === 3 ? 3 : 4);
   if (place) await twitch.resolvePrediction(place);
   updatePresence();
 }
@@ -109,14 +109,7 @@ function handleChat(text: string, _user: string, isMod: boolean, isBroadcaster: 
 const twitch = new Twitch(() => config, handleTwitchEvent, handleChat);
 
 // ---------------- Screen reader ----------------
-const reader = new ScreenReader({
-  getConfig: () => config.screen,
-  saveConfig: (s) => { config = saveConfig({ ...config, screen: s }); return config.screen; },
-  sharedDir: sharedDir(),
-  captureExe,
-  onDetect,
-  onState,
-});
+const reader = new ScreenReader({ sharedDir: sharedDir(), captureExe, builtinPack, onDetect, onState });
 
 // ---------------- HTTP ----------------
 const TYPES: Record<string, string> = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
@@ -190,6 +183,7 @@ const server = createServer(async (req, res) => {
       case 'POST /api/session/reset': session.reset(); broadcast(overlayOut, overlayState()); updatePresence(); return send(res, 200, { ok: true });
       case 'POST /api/twitch/reconnect': await twitch.connect(); return send(res, 200, { ok: true, status: twitch.status });
       case 'POST /api/twitch/disconnect': await twitch.disconnect(); return send(res, 200, { ok: true });
+      case 'POST /api/bookmark': return send(res, 200, { ok: reader.bookmark() });
       case 'POST /api/shutdown': send(res, 200, { ok: true }); return void shutdown();
       case 'GET /auth/login':
         if (!config.twitch.clientId) return send(res, 400, 'Set your Client ID and secret in settings first.', 'text/plain');
