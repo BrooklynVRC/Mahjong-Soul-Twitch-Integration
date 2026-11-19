@@ -5,7 +5,9 @@ import { dataDir } from './runtime.js';
 export const DATA_DIR = dataDir('MahjongSoulTwitch');
 const CONFIG_PATH = resolve(DATA_DIR, 'config.json');
 
-const ev = (enabled: boolean, template: string) => ({ enabled, template });
+// template: full-detail text (browser userscript). templateBasic: used for screen-reader events,
+// which don't know han/fu/yaku/names. Extra placeholder there: {who} = "I" / "An opponent".
+const ev = (enabled: boolean, template: string, templateBasic: string) => ({ enabled, template, templateBasic });
 
 export const DEFAULT_CONFIG = {
   port: 7701,
@@ -20,16 +22,16 @@ export const DEFAULT_CONFIG = {
     whose: 'me' as 'me' | 'all',
     prefix: '🀄 ',
     events: {
-      game_start: ev(true, 'New Mahjong Soul game! Opponents: {opponents}'),
-      round_start: ev(false, '{round}{honbaText} — scores: {scores}'),
-      riichi: ev(true, '{player} declared {riichiType}!'),
-      call: ev(false, '{player} called {call}.'),
-      win_tsumo: ev(true, '{player} TSUMO! {han} han {fu} fu, +{points} ({yaku})'),
-      win_ron: ev(true, '{player} RON off {from}! {han} han {fu} fu, +{points} ({yaku})'),
-      dealt_in: ev(true, 'Ouch, I dealt into {winner} for {lost}.'),
-      yakuman: ev(true, 'YAKUMAN!!! {player} hit {yaku}!'),
-      draw: ev(false, 'Round drawn ({reason}). Tenpai: {tenpai}'),
-      game_end: ev(true, 'Game over: {place} place with {score}. Session: {sessionSummary}'),
+      game_start: ev(true, 'New Mahjong Soul game! Opponents: {opponents}', 'New Mahjong Soul game starting!'),
+      round_start: ev(false, '{round}{honbaText} — scores: {scores}', 'New round!'),
+      riichi: ev(true, '{player} declared {riichiType}!', '{who} declared riichi!'),
+      call: ev(false, '{player} called {call}.', '{who} called a tile.'),
+      win_tsumo: ev(true, '{player} TSUMO! {han} han {fu} fu, +{points} ({yaku})', '{who} won by TSUMO!'),
+      win_ron: ev(true, '{player} RON off {from}! {han} han {fu} fu, +{points} ({yaku})', '{who} won by RON!'),
+      dealt_in: ev(true, 'Ouch, I dealt into {winner} for {lost}.', 'Ouch, I dealt in.'),
+      yakuman: ev(true, 'YAKUMAN!!! {player} hit {yaku}!', 'YAKUMAN!!!'),
+      draw: ev(false, 'Round drawn ({reason}). Tenpai: {tenpai}', 'Round drawn.'),
+      game_end: ev(true, 'Game over: {place} place with {score}. Session: {sessionSummary}', 'Game over: {place} place. Session: {sessionSummary}'),
     },
   },
   overlay: {
@@ -87,7 +89,8 @@ export const HINTS: Record<string, unknown> = {
   'twitch.clientSecret': { label: 'Client secret', secret: true },
   'twitch.channel': { label: 'Channel (login name)', help: 'Leave blank to use the account you connect with.' },
   'announcements.whose': { label: 'Announce events for', options: [{ value: 'me', label: 'Only me' }, { value: 'all', label: 'All players' }] },
-  'announcements.events.*.template': { multiline: true },
+  'announcements.events.*.template': { multiline: true, label: 'Text (full detail)' },
+  'announcements.events.*.templateBasic': { multiline: true, label: 'Text (screen reader)', help: 'Used for events from the screen reader, which can\'t see han/fu/yaku/names. {who} = "I" or "An opponent".' },
   'announcements.events': { help: 'Placeholders: {player} {round} {han} {fu} {points} {yaku} {from} {winner} {lost} {call} {riichiType} {reason} {tenpai} {place} {score} {opponents} {scores} {sessionSummary}' },
   'announcements.events.dealt_in': { label: 'I dealt in' },
   'overlay': { help: 'Add http://localhost:7701/overlay as an OBS Browser Source (e.g. 600×400).' },

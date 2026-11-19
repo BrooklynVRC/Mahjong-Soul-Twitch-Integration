@@ -24,14 +24,14 @@ function broadcast(wss: WebSocketServer, data: unknown) {
 const overlayState = () => ({ kind: 'state', state: game.snapshot(), overlay: config.overlay });
 
 gameIn.on('connection', (ws) => {
-  console.log('[game] userscript connected');
+  console.log('[game] game source connected (userscript or screen reader)');
   ws.on('message', (raw) => {
     try {
       const e = JSON.parse(String(raw));
       if (e?.source === 'mahjongsoul') void handleGameEvent(e);
     } catch { /* ignore bad frames */ }
   });
-  ws.on('close', () => console.log('[game] userscript disconnected'));
+  ws.on('close', () => console.log('[game] game source disconnected'));
 });
 overlayOut.on('connection', (ws) => ws.send(JSON.stringify(overlayState())));
 
@@ -42,7 +42,7 @@ async function handleGameEvent(e: GameEvent) {
   let text: string | null = null;
   if (d) {
     const ann = config.announcements.events[d.key];
-    text = fill(ann.template, d.vars);
+    text = fill(e.detail === false && ann.templateBasic ? ann.templateBasic : ann.template, d.vars);
     if (config.announcements.enabled && ann.enabled) await twitch.say(config.announcements.prefix + text);
   }
   const showInFeed = d ? config.overlay.feedEvents[d.key] : false;

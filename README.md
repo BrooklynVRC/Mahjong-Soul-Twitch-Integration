@@ -21,6 +21,10 @@ Everything is set from a local settings page at <http://localhost:7701>.
 
 Your settings are stored in `%APPDATA%\MahjongSoulTwitch`. To update, download the new `.exe` and replace the old one; your settings are kept.
 
+## Playing on the Steam / desktop client?
+
+The userscript only works in the browser version. On the Steam client, run **MahjongSoul-ScreenReader.exe** (in the same release) instead. It watches the game picture like a screen share, still works when you tab out, and never touches the game. You teach it the banners once. See [screen-reader/README.md](screen-reader/README.md).
+
 ## How it works
 
 ```

@@ -101,7 +101,7 @@ export class GameTracker {
   /** Returns { key, vars } describing which announcement applies to this event (or null). */
   describe(e: GameEvent, whose: 'me' | 'all'): { key: keyof Config['announcements']['events']; vars: Record<string, unknown> } | null {
     const mineOnly = whose === 'me';
-    const common = this.sessionVars();
+    const common = { ...this.sessionVars(), who: e.isMe ? 'I' : 'An opponent' };
     switch (e.type) {
       case 'game_start':
         return { key: 'game_start', vars: { ...common, opponents: e.players.filter((p: Player) => p.seat !== e.mySeat).map((p: Player) => p.nickname).join(', ') } };
@@ -124,7 +124,7 @@ export class GameTracker {
         return { key: 'draw', vars: { ...common, reason: e.reason, tenpai: e.tenpaiPlayers?.length ? e.tenpaiPlayers.join(', ') : 'nobody' } };
       case 'game_end':
         if (!e.myPlace) return null;
-        return { key: 'game_end', vars: { ...this.sessionVars(), place: PLACE[e.myPlace - 1], score: e.myScore } };
+        return { key: 'game_end', vars: { ...this.sessionVars(), who: 'I', place: PLACE[e.myPlace - 1], score: e.myScore } };
     }
     return null;
   }

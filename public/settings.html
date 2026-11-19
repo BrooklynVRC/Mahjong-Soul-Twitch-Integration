@@ -43,7 +43,7 @@
     <h2>Status</h2>
     <div class="status">
       <div class="stat"><b>Twitch</b><span id="sTwitch">…</span></div>
-      <div class="stat"><b>Game userscript</b><span id="sGame">…</span></div>
+      <div class="stat"><b>Game source</b><span id="sGame">…</span></div>
       <div class="stat"><b>OBS overlays</b><span id="sOverlay">…</span></div>
       <div class="stat"><b>Apps listening (/events)</b><span id="sEvents">…</span></div>
       <div class="stat"><b>Current game</b><span id="sRound">…</span></div>
@@ -87,7 +87,7 @@
     const s = await fetch('/api/status').then((r) => r.json()).catch(() => null);
     if (!s) return;
     $('sTwitch').innerHTML = dot(s.twitch.startsWith('connected'), s.twitch);
-    $('sGame').innerHTML = dot(s.gameClients > 0, s.gameClients ? 'connected' : 'waiting for game tab');
+    $('sGame').innerHTML = dot(s.gameClients > 0, s.gameClients ? 'connected' : 'waiting for game (userscript or screen reader)');
     $('sOverlay').innerHTML = dot(s.overlayClients > 0, `${s.overlayClients} open`);
     $('sEvents').innerHTML = dot(s.eventClients > 0, `${s.eventClients} connected`);
     $('sRound').textContent = s.game.inGame ? (s.game.round || 'starting') : 'not in a game';
