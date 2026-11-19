@@ -27,7 +27,7 @@ Closing the window quits the app.
 
 ## Calibration: done once, for everyone
 
-The apps ship with a **built-in calibration**, and keep it up to date online. Most people never calibrate anything. Calibration is stored in `%APPDATA%MahjongSoulScreenReader`.
+The app ships with a **built-in calibration**, and keeps it up to date online. Most people never calibrate anything. Calibration is stored in `%APPDATA%\MahjongSoulScreenReader`.
 
 **How it reads the game.** The core is the **four point totals** in the centre panel, read from a full-resolution zoom of that area. Score changes give almost everything, and they don't care about skins or riichi effects:
 
