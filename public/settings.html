@@ -11,6 +11,8 @@
   main { max-width: 900px; margin: 0 auto; padding: 24px 16px 120px; }
   h1 { font-size: 22px; margin: 0 0 4px; } h2 { font-size: 16px; margin: 0 0 12px; }
   .sub { color: var(--muted); margin: 0 0 20px; }
+  .big { font-size: 17px; font-weight: 600; }
+  .hint { display:none; margin-top:12px; padding:10px 12px; border-radius:8px; background:#2b2414; border:1px solid #5a4a20; color:#f6dfa4; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
   .status { display:grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
   .stat { background:#14161d; border-radius:8px; padding:10px 12px; } .stat b { display:block; font-size:12px; color:var(--muted); font-weight:500; }
@@ -37,20 +39,21 @@
 <body>
 <main>
   <h1>Mahjong Soul × Twitch</h1>
-  <p class="sub">Chat announcements, OBS overlay, chat commands and predictions, all driven by your live Mahjong Soul games.</p>
+  <p class="sub">Reads your Mahjong Soul game from the screen and drives Twitch chat, an OBS overlay, chat commands, predictions and Discord.</p>
 
   <section class="card">
     <h2>Status</h2>
     <div class="status">
+      <div class="stat"><b>Game</b><span id="sGame" class="big">…</span></div>
+      <div class="stat"><b>Screen reader</b><span id="sScreen">…</span></div>
       <div class="stat"><b>Twitch</b><span id="sTwitch">…</span></div>
-      <div class="stat"><b>Game source</b><span id="sGame">…</span></div>
+      <div class="stat"><b>Discord</b><span id="sDiscord">…</span></div>
       <div class="stat"><b>OBS overlays</b><span id="sOverlay">…</span></div>
-      <div class="stat"><b>Apps listening (/events)</b><span id="sEvents">…</span></div>
-      <div class="stat"><b>Current game</b><span id="sRound">…</span></div>
       <div class="stat"><b>Session</b><span id="sSession">…</span></div>
     </div>
+    <div id="hint" class="hint"></div>
     <div class="row">
-      <a class="btn primary" href="/mahjong-soul-bridge.user.js" title="Needs Tampermonkey or Violentmonkey">Install userscript</a>
+      <a class="btn primary" href="/screen">Screen reader & calibration</a>
       <a class="btn primary" href="/auth/login">Connect Twitch</a>
       <button onclick="post('/api/twitch/reconnect')">Reconnect</button>
       <button onclick="post('/api/twitch/disconnect')">Disconnect</button>
@@ -61,9 +64,15 @@
   </section>
 
   <section class="card">
+    <h2>Recent events</h2>
+    <div id="recent" class="help">Nothing yet. Events from the screen reader show up here.</div>
+  </section>
+
+  <section class="card">
     <h2>Test without playing</h2>
-    <p class="help">Fires fake events through the whole pipeline (chat, overlay, forwarding).</p>
+    <p class="help">Fires events through chat, the overlay, Discord and forwarding as if the screen reader had seen them.</p>
     <div class="row" id="gameTests"></div>
+    <div class="row"><button class="small" onclick="post('/api/test/state', { place: 2, mode: 'Test · Gold Room' })">Live place: 2nd</button><button class="small" onclick="post('/api/test/state', { place: 1 })">Live place: 1st</button><button class="small" onclick="testHook()">Test Discord webhook</button><span id="hookMsg" class="help"></span></div>
     <div class="row" id="twitchTests"></div>
   </section>
 
@@ -78,42 +87,32 @@
 <script>
   let cfg = null;
   const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
   async function post(url, data) {
     const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data || {}) });
-    refresh(); return r.json().catch(() => ({}));
+    setTimeout(refresh, 200); return r.json().catch(() => ({}));
   }
-  const dot = (on, text) => `<span class="dot ${on ? 'on' : ''}"></span>${text}`;
+  async function testHook() { $('hookMsg').textContent = 'Sending…'; const r = await post('/api/test/webhook'); $('hookMsg').textContent = r.ok ? 'Sent ✓ (save settings first if you just pasted the URL)' : (r.error || 'failed'); }
+  const dot = (on, text) => `<span class="dot ${on ? 'on' : ''}"></span>${esc(text)}`;
   async function refresh() {
     const s = await fetch('/api/status').then((r) => r.json()).catch(() => null);
     if (!s) return;
+    const sc = s.screen, st = sc.state, v = s.vars;
+    $('sGame').textContent = st.inGame ? `${v.mode} · ${st.place ? v.place : 'in a match'}${v.elapsed ? ' · ' + v.elapsed : ''}` : v.placeText;
+    $('sScreen').innerHTML = dot(sc.capturing && sc.templates > 0, sc.capturing ? `${sc.templates} templates${sc.scoresTaught ? ' · scores ✓' : ' · no score boxes'}${sc.detecting ? '' : ' · paused'}` : sc.status);
     $('sTwitch').innerHTML = dot(s.twitch.startsWith('connected'), s.twitch);
-    $('sGame').innerHTML = dot(s.gameClients > 0, s.gameClients ? `${s.gameClients} connected${s.lastGameEvent ? ' · last: ' + s.lastGameEvent : ''}` : 'waiting for game (userscript or screen reader)');
+    $('sDiscord').innerHTML = dot(s.discord.startsWith('connected'), s.discord);
     $('sOverlay').innerHTML = dot(s.overlayClients > 0, `${s.overlayClients} open`);
-    $('sEvents').innerHTML = dot(s.eventClients > 0, `${s.eventClients} connected`);
-    $('sRound').textContent = s.game.inGame ? (s.game.round || 'starting') : 'not in a game';
-    $('sSession').textContent = `${s.game.session.games} games · avg ${s.game.session.avgPlace}`;
+    $('sSession').textContent = `${v.games} games · avg ${v.avgPlace}`;
+    $('hint').style.display = sc.hint ? 'block' : 'none'; $('hint').textContent = sc.hint ? 'Screen reader: ' + sc.hint : '';
     $('redirect').textContent = s.redirectUri;
     $('dataDir').textContent = s.dataDir; $('version').textContent = 'v' + s.version;
+    $('recent').innerHTML = s.recent.length ? s.recent.map((r) => `<div>${new Date(r.ts).toLocaleTimeString()} · <b>${esc(r.label)}</b>${r.text ? ' · ' + esc(r.text) : ''}</div>`).join('') : 'Nothing yet. Events from the screen reader show up here.';
   }
-  const P = [{ seat: 0, nickname: 'Me' }, { seat: 1, nickname: 'Riichi_Rina' }, { seat: 2, nickname: 'TanyaoTom' }, { seat: 3, nickname: 'DoraDan' }];
-  const gameTests = {
-    'Game start': { type: 'game_start', mySeat: 0, players: P, playerCount: 4 },
-    'Round start': { type: 'round_start', mySeat: 0, label: 'East 2', wind: 'East', round: 2, honba: 1, riichiSticks: 0, scores: [27000, 23000, 25000, 25000], players: P },
-    'I riichi': { type: 'riichi', mySeat: 0, seat: 0, player: 'Me', isMe: true, double: false },
-    'Opponent riichi': { type: 'riichi', mySeat: 0, seat: 2, player: 'TanyaoTom', isMe: false, double: false },
-    'I ron': { type: 'win', mySeat: 0, seat: 0, player: 'Me', isMe: true, method: 'ron', from: 1, fromPlayer: 'Riichi_Rina', dealtInByMe: false, han: 3, fu: 40, yakuman: false, yaku: ['Riichi', 'Pinfu', 'Dora'], points: 7700, deltas: [7700, -7700, 0, 0], scores: [34700, 15300, 25000, 25000] },
-    'I tsumo': { type: 'win', mySeat: 0, seat: 0, player: 'Me', isMe: true, method: 'tsumo', from: null, fromPlayer: null, dealtInByMe: false, han: 4, fu: 30, yakuman: false, yaku: ['Riichi', 'Tsumo', 'Dora 2'], points: 8000, deltas: [8000, -2000, -2000, -4000], scores: [35000, 21000, 23000, 21000] },
-    'I dealt in': { type: 'win', mySeat: 0, seat: 3, player: 'DoraDan', isMe: false, method: 'ron', from: 0, fromPlayer: 'Me', dealtInByMe: true, han: 5, fu: 30, yakuman: false, yaku: ['Riichi', 'Ippatsu', 'Dora 3'], points: 8000, deltas: [-8000, 0, 0, 8000], scores: [19000, 25000, 25000, 33000] },
-    'Yakuman': { type: 'win', mySeat: 0, seat: 0, player: 'Me', isMe: true, method: 'tsumo', from: null, fromPlayer: null, dealtInByMe: false, han: 13, fu: 0, yakuman: true, yaku: ['Kokushi Musou'], points: 32000, deltas: [32000, -16000, -8000, -8000], scores: [57000, 9000, 17000, 17000] },
-    'Draw': { type: 'draw', mySeat: 0, kind: 'exhaustive', reason: 'exhaustive draw', tenpai: [0, 2], tenpaiPlayers: ['Me', 'TanyaoTom'], iAmTenpai: true, deltas: [1500, -1500, 1500, -1500] },
-    'Game end (1st)': { type: 'game_end', mySeat: 0, myPlace: 1, myScore: 41200, playerCount: 4, results: [{ seat: 0, place: 1, score: 41200, player: 'Me', isMe: true }, { seat: 2, place: 2, score: 28000, player: 'TanyaoTom' }, { seat: 1, place: 3, score: 19800, player: 'Riichi_Rina' }, { seat: 3, place: 4, score: 11000, player: 'DoraDan' }] },
-    'Game end (4th)': { type: 'game_end', mySeat: 0, myPlace: 4, myScore: 3100, playerCount: 4, results: [{ seat: 1, place: 1, score: 45000, player: 'Riichi_Rina' }, { seat: 2, place: 2, score: 30000, player: 'TanyaoTom' }, { seat: 3, place: 3, score: 21900, player: 'DoraDan' }, { seat: 0, place: 4, score: 3100, player: 'Me', isMe: true }] },
-  };
   const twitchTests = {
     '100 bits': { type: 'bits', amount: 100 }, 'Sub': { type: 'sub', amount: 1 }, 'Gift 5 subs': { type: 'gift', amount: 5 },
-    'Follow': { type: 'follow' }, 'Raid (25)': { type: 'raid', amount: 25 }, 'Redeem': { type: 'redeem', rewardTitle: 'Test Reward' }, 'Chat !stats': { type: 'chat', message: '!stats' },
+    'Follow': { type: 'follow' }, 'Raid (25)': { type: 'raid', amount: 25 }, 'Redeem': { type: 'redeem', rewardTitle: 'Test Reward' }, 'Chat !stats': { type: 'chat', message: '!stats' }, 'Chat !place': { type: 'chat', message: '!place' },
   };
-  for (const [n, e] of Object.entries(gameTests)) $('gameTests').append(SettingsUI.el('button', { class: 'small', onclick: () => post('/api/test/game', e) }, n));
   for (const [n, e] of Object.entries(twitchTests)) $('twitchTests').append(SettingsUI.el('button', { class: 'small', onclick: () => post('/api/test/twitch', e) }, '🟣 ' + n));
 
   let dirty = false;
@@ -124,8 +123,12 @@
     else $('saveMsg').textContent = 'Save failed: ' + (r.error || 'unknown');
   };
   window.addEventListener('beforeunload', (e) => { if (dirty) e.preventDefault(); });
-  fetch('/api/config').then((r) => r.json()).then(({ config, hints }) => { cfg = config; SettingsUI.render($('form'), cfg, hints, changed); });
-  refresh(); setInterval(refresh, 3000);
+  fetch('/api/config').then((r) => r.json()).then(({ config, hints, keys }) => {
+    cfg = config;
+    for (const k of keys) $('gameTests').append(SettingsUI.el('button', { class: 'small', onclick: () => post('/api/test/game', { key: k.key }) }, k.label));
+    SettingsUI.render($('form'), cfg, hints, changed);
+  });
+  refresh(); setInterval(refresh, 2000);
 </script>
 </body>
 </html>

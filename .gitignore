@@ -1,8 +1,12 @@
 node_modules/
 dist/
+build/
+release/
+host/bin/
+host/obj/
 config.json
 tokens.json
 session.json
+templates.json
+scores.json
 *.log
-build/
-release/

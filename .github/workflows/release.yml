@@ -1,4 +1,4 @@
-# Push a tag like v1.1.1 to build the Windows .exe files and publish a GitHub Release.
+# Push a tag like v2.0.1 to build the Windows app and publish a GitHub Release.
 name: Release
 
 on:
@@ -19,36 +19,20 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            screen-reader/package-lock.json
 
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
-      - name: Main app
-        run: |
-          npm ci
-          npm run typecheck
-          npm test
-          npm run package
-
-      - name: Screen reader
-        working-directory: screen-reader
-        run: |
-          npm ci
-          npm run typecheck
-          npm test
-          npm run package
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run package
 
       - name: Publish release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            release/*.exe
-            release/*.user.js
-            screen-reader/release/*.exe
+          files: release/*.exe
           generate_release_notes: true
           body_path: .github/RELEASE_TEMPLATE.md

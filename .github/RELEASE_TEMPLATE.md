@@ -1,12 +1,16 @@
 ## Download
 
-1. Download **MahjongSoul-Twitch.exe** below and put it in any folder.
-2. Double-click it. A console window opens (keep it open while streaming) and your browser opens the settings page.
-   - Windows may show "Windows protected your PC" because the app isn't code-signed. Click **More info → Run anyway**.
-3. On the settings page click **Install userscript** (you need [Tampermonkey](https://www.tampermonkey.net/) first), then **Connect Twitch**.
+**MahjongSoul-Twitch.exe**: one file, nothing else to install. Double-click it and the app opens in its own window.
 
-**Playing on Steam?** Also download **MahjongSoul-ScreenReader.exe**. It reads the game picture like a screen share (read-only, works when tabbed out) instead of using the userscript. Run it once for both apps. [How to teach it](https://github.com/BrooklynVRC/Mahjong-Soul-Twitch-Integration/blob/main/screen-reader/README.md)
+- Windows may show "Windows protected your PC" because the app isn't code-signed. Click **More info → Run anyway**.
+- It reads Mahjong Soul (Steam client) **from the screen, like a screen share**. It never touches the game's files or process, and it works while you're tabbed out (just don't minimize the game).
 
-Your settings are saved in `%APPDATA%\MahjongSoulTwitch`. Full setup steps are in the [README](https://github.com/BrooklynVRC/Mahjong-Soul-Twitch-Integration#readme).
+### First run
+1. Open **Screen reader & calibration** and teach it the banners (RIICHI / RON / TSUMO / results) and the four score boxes.
+2. Connect Twitch (needs a free app at dev.twitch.tv; the redirect URL is shown in the app).
+3. Optional: Discord Rich Presence (paste your Discord Application ID) and/or a channel webhook.
+4. OBS: add a Browser Source for `http://localhost:7701/overlay`.
 
-Want the toy integration too? See [Mahjong Soul Lovense Integration](https://github.com/BrooklynVRC/Mahjong-Soul-Lovense-Integration/releases/latest).
+Settings live in `%APPDATA%\MahjongSoulTwitch`; templates are shared with the Lovense app in `%APPDATA%\MahjongSoulScreenReader`. Full guide: [README](https://github.com/BrooklynVRC/Mahjong-Soul-Twitch-Integration#readme).
+
+Toy integration: [Mahjong Soul Lovense Integration](https://github.com/BrooklynVRC/Mahjong-Soul-Lovense-Integration/releases/latest). It uses the same templates, so you only calibrate once.

@@ -13,10 +13,10 @@ export class WindowCapture implements Source {
   private proc: ChildProcessWithoutNullStreams | null = null;
   private waiting: { resolve: (b: Buffer) => void; reject: (e: Error) => void }[] = [];
 
-  constructor(private exe: string, private processName: string) {}
+  constructor(private exe: string, private args: string[]) {}
 
   private start() {
-    const p = spawn(this.exe, ['--process', this.processName], { windowsHide: true });
+    const p = spawn(this.exe, this.args, { windowsHide: true });
     this.proc = p;
     createInterface({ input: p.stdout }).on('line', (line) => {
       const w = this.waiting.shift();

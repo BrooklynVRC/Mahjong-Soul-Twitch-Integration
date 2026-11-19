@@ -1,4 +1,4 @@
-// wgc-capture: grabs frames of one window through Windows Graphics Capture.
+// Capture mode (MahjongSoul-*.exe --capture): grabs frames of one window through Windows Graphics Capture.
 // READ-ONLY: this asks Windows (DWM) for the window's picture, the same way OBS window capture
 // and Discord screen share do. It never opens, injects into, or sends input/messages to the game.
 // Works while the window is covered or unfocused; a minimized window can't be captured.
@@ -36,11 +36,12 @@ static class Native
     [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr hWnd);
 }
 
-static class Program
+static class CaptureMode
 {
     static readonly Guid IID_IGraphicsCaptureItem = new("79C3F95B-31F7-4EC2-A464-632EF5D30760");
     static readonly Guid IID_ID3D11Texture2D = new("6f15aaf2-d208-4e89-9ab4-489535d34f9c");
 
+    static readonly object Gate = new();
     static string processName = "Jantama_MahjongSoul";
     static ID3D11Device d3d = null!;
     static ID3D11DeviceContext ctx = null!;
@@ -54,7 +55,7 @@ static class Program
     static ID3D11Texture2D? staging;      // holds the most recent frame
     static int contentW, contentH;
 
-    static int Main(string[] args)
+    public static int Run(string[] args)
     {
         for (int i = 0; i < args.Length - 1; i++) if (args[i] == "--process") processName = args[i + 1];
         try { InitDevice(); }
@@ -102,7 +103,7 @@ static class Program
         var ptr = interop.CreateForWindow(window, ref iid);
         item = GraphicsCaptureItem.FromAbi(ptr);
         Marshal.Release(ptr);
-        item.Closed += (_, _) => { lock (typeof(Program)) StopSession(); };
+        item.Closed += (_, _) => { lock (Gate) StopSession(); };
 
         poolSize = item.Size;
         pool = Direct3D11CaptureFramePool.CreateFreeThreaded(device, DirectXPixelFormat.B8G8R8A8UIntNormalized, 2, poolSize);
@@ -123,7 +124,7 @@ static class Program
 
     static byte[] Capture(int outW)
     {
-        lock (typeof(Program))
+        lock (Gate)
         {
             if (hwnd == IntPtr.Zero || !Native.IsWindow(hwnd))
             {

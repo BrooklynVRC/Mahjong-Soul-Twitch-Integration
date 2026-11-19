@@ -1,15 +1,16 @@
 {
   "name": "mahjong-soul-twitch",
-  "version": "1.2.0",
-  "description": "Twitch integration for Mahjong Soul: chat announcements, OBS overlay, chat commands, auto predictions, and an event feed other apps can use.",
+  "version": "2.0.0",
+  "description": "Twitch + Discord integration for Mahjong Soul (Steam client): reads the game from the screen and drives chat, an OBS overlay, predictions and Discord Rich Presence.",
   "type": "module",
   "private": true,
   "license": "MIT",
   "scripts": {
     "start": "tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
+    "build:host": "dotnet build host/MahjongSoulHost.csproj -c Release -nologo -v q",
     "typecheck": "tsc --noEmit",
-    "test": "node --test test/userscript.test.mjs",
+    "test": "node --import tsx --test test/screen.test.mjs",
     "package": "node scripts/package.mjs"
   },
   "engines": {
@@ -34,5 +35,11 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/BrooklynVRC/Mahjong-Soul-Twitch-Integration"
+  },
+  "app": {
+    "title": "Mahjong Soul × Twitch",
+    "dataFolder": "MahjongSoulTwitch",
+    "accent": "#9b6bff",
+    "letter": "T"
   }
 }

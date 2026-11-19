@@ -1,8 +1,0 @@
-node_modules/
-build/
-release/
-config.json
-templates.json
-capture-helper/bin/
-capture-helper/obj/
-capture-helper/publish/
