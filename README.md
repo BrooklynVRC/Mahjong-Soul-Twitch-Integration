@@ -6,7 +6,7 @@ Use your live Mahjong Soul games on stream:
 - **OBS overlay**: round, honba, riichi sticks, all four scores with riichi badges, a pop-up event feed, and session stats. You can theme all of it.
 - **Chat commands**: `!stats`, `!score`, `!last`, mod-only `!msreset`, plus as many custom commands as you want.
 - **Auto predictions**: opens "Will I get 1st?" (or a 1st–4th pick) when a game starts and resolves it from the result. Needs Affiliate or Partner.
-- **Event forwarding**: bits, subs, gifts, follows, raids, channel point redeems and chat commands are shared on `ws://localhost:7701/events` so other apps can react. The companion **mahjong-soul-lovense** app uses this.
+- **Event forwarding**: bits, subs, gifts, follows, raids, channel point redeems and chat commands are shared on `ws://localhost:7701/events` so other apps can react. The companion [Mahjong Soul Lovense Integration](https://github.com/BrooklynVRC/Mahjong-Soul-Lovense-Integration) app uses this.
 
 Everything is set from a local settings page at <http://localhost:7701>.
 
