@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 
 const { decodeBmpGray, encodeGrayBmp, cropTemplate, prepare, matchScore, shrink, searchable, searchAnywhere, seatAt } = await import('../src/screen/image.ts');
 const { learn, readScore, prepareGlyphs, placement, emptyLayout, segment, classifyChange, looksLikeGameStart } = await import('../src/screen/scores.ts');
-const { KEYS, placeOf } = await import('../src/screen/keys.ts');
+const { KEYS, placeOf, tierFromPoints } = await import('../src/screen/keys.ts');
 
 // Synthetic 480x270 frame: noise + a bright "banner" with text-like stripes.
 function frame(bannerX, bannerY, seed = 1) {
@@ -30,7 +30,7 @@ test('finds a banner anywhere and tells which seat it belongs to', () => {
   assert.ok(m.score > 0.85, 'found: ' + m.score);
   assert.equal(seatAt(m.cx, m.cy), 'right');
   assert.equal(seatAt(0.5, 0.85), 'me'); assert.equal(seatAt(0.5, 0.15), 'top'); assert.equal(seatAt(0.12, 0.5), 'left');
-  assert.equal(seatAt(0.34, 0.75), 'me', 'my PON banner (real match)'); assert.equal(seatAt(0.26, 0.52), 'left', 'left RIICHI banner (real match)'); assert.equal(seatAt(0.51, 0.14), 'top', 'top RON banner (real match)');
+  assert.equal(seatAt(0.34, 0.75), 'me', 'my PON banner (real match)'); assert.equal(seatAt(0.51, 0.62), 'me', 'my TSUMO banner (real match)'); assert.equal(seatAt(0.76, 0.60), 'right', 'right KAN banner (real match)'); assert.equal(seatAt(0.26, 0.52), 'left', 'left RIICHI banner (real match)'); assert.equal(seatAt(0.51, 0.14), 'top', 'top RON banner (real match)');
 });
 
 test('BMP round trip', () => {
@@ -140,6 +140,11 @@ test('works out events from score changes', () => {
   assert.ok(looksLikeGameStart(s(25000, 25000, 25000, 25000)));
   assert.ok(looksLikeGameStart(s(35000, 35000, null, 35000)));
   assert.ok(!looksLikeGameStart(s(25000, 24000, 25000, 25000)));
+});
+
+test('hand tier from points', () => {
+  assert.equal(tierFromPoints(3900), null); assert.equal(tierFromPoints(8000), 'mangan'); assert.equal(tierFromPoints(12300), 'haneman');
+  assert.equal(tierFromPoints(18000), 'baiman'); assert.equal(tierFromPoints(24000), 'sanbaiman'); assert.equal(tierFromPoints(48000), 'yakuman');
 });
 
 test('keys', () => {

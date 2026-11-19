@@ -12,7 +12,7 @@ import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { ObsCapture, WindowCapture, type Source } from './capture.js';
-import { BANNER_KEYS, KEYS, keyLabel, placeOf, type Detection, type GameState } from './keys.js';
+import { BANNER_KEYS, KEYS, TITLE_KEYS, keyLabel, placeOf, tierFromPoints, type Detection, type GameState } from './keys.js';
 import { cropTemplate, decodeBmpGray, encodeGrayBmp, matchScore, prepare, searchAnywhere, searchable, seatAt, shrink, type Gray, type Prepared, type Rect, type Searchable } from './image.js';
 import {
   SEATS, classifyChange, coverage, emptyLayout, learn, looksLikeGameStart, placement, prepareGlyphs, readScore, reinforce,
@@ -107,6 +107,8 @@ export class ScreenReader {
   private prepared = new Map<string, Prepared>();
   private searchables = new Map<string, Searchable>();
   private lastEmitVia = new Map<string, string>();
+  private lastWin: { mine: boolean; ts: number } | null = null;
+  private lastTierAt = 0;
   private source: Source | null = null;
   private sourceKey = '';
   status = 'starting';
@@ -229,6 +231,9 @@ export class ScreenReader {
     const window = via === 'scores' && this.lastEmitVia.get(key) === 'banner' ? 90000 : 10000;
     if (via !== 'test' && now - (this.lastEmit.get(key) ?? 0) < window) { this.record({ key, name, score, manual: false }, frame, via, 'skipped: already reported'); return; }
     this.lastEmit.set(key, now); this.lastEmitVia.set(key, via);
+    if (key === 'my_win_ron' || key === 'my_win_tsumo') this.lastWin = { mine: true, ts: now };
+    if (['opponent_ron', 'opponent_tsumo', 'opponent_ron_other', 'dealt_in'].includes(key)) this.lastWin = { mine: false, ts: now };
+    if (/^(my|opponent)_(mangan|haneman|baiman|sanbaiman|yakuman)$/.test(key)) this.lastTierAt = now;
     const d: Detection = { key, name, score, manual: via === 'test' };
     this.record(d, frame, via, note);
     console.log(`[screen] ${keyLabel(key)} (${via}: ${name})${note ? ' ' + note : ''}`);
@@ -312,7 +317,17 @@ export class ScreenReader {
       const before = this.settled, after = { ...this.stable };
       const what = classifyChange(before, after);
       const desc = SEATS.filter((s) => before[s] !== after[s]).map((s) => `${s} ${before[s]}→${after[s]}`).join(', ');
-      if (what) { this.settled = after; for (const k of what.keys) this.emit(k, 'scores', null, frame, 'scores', `(${what.note})`); }
+      if (what) {
+        this.settled = after;
+        for (const k of what.keys) this.emit(k, 'scores', null, frame, 'scores', `(${what.note})`);
+        // Big hand? If no win-screen title was seen, judge it from the winner's gain (riichi sticks can make it read a little high).
+        const win = what.keys.find((k) => ['my_win_ron', 'my_win_tsumo', 'opponent_ron_other', 'dealt_in', 'opponent_tsumo'].includes(k));
+        if (win && now - this.lastTierAt > 60000) {
+          const gain = Math.max(...SEATS.map((s) => (after[s] ?? 0) - (before[s] ?? 0)));
+          const tier = tierFromPoints(gain);
+          if (tier) this.emit((win.startsWith('my_') ? 'my_' : 'opponent_') + tier, 'scores', null, frame, 'scores', `(+${gain} points)`);
+        }
+      }
       else if (now - this.lastChange > 20000) { this.settled = after; this.record({ key: 'unknown', name: 'scores', score: null, manual: false }, frame, 'scores', `accepted new scores without an event (${desc})`); }
       else if (this.lastNote !== desc) { this.lastNote = desc; this.record({ key: 'unknown', name: 'scores', score: null, manual: false }, frame, 'scores', `doesn't add up yet, waiting (${desc})`); }
     }
@@ -385,6 +400,10 @@ export class ScreenReader {
           if (now - (this.lastFired.get(k) ?? 0) >= t.cooldownSec * 1000) {
             this.lastFired.set(k, now);
             if (t.key === 'game_mode') { if (this.state.mode !== t.name) this.emit(t.key, t.name, s, frame, 'banner'); }
+            else if (TITLE_KEYS.includes(t.key)) {
+              const mine = !this.lastWin || now - this.lastWin.ts > 60000 ? true : this.lastWin.mine;
+              this.emit((mine ? 'my_' : 'opponent_') + t.key.slice(6), t.name, s, frame, 'banner', mine ? '' : '(opponent win)');
+            }
             else if (where) { const ev = this.bannerEvent(t.key, where.cx, where.cy); if (ev) this.emit(ev, t.name, s, frame, 'banner', `(${seatAt(where.cx, where.cy)} side)`); }
             else this.emit(t.key, t.name, s, frame, 'banner');
           }

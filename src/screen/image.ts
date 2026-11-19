@@ -160,12 +160,13 @@ export function searchAnywhere(img: Gray, t: Searchable): { score: number; cx: n
 }
 
 /**
- * Which player a banner belongs to, from where it appeared. Measured in a real match: your own banners show
- * low on the screen (often bottom-left, next to your portrait), the top player's near the top, and the left
- * and right players' around the middle of their side.
+ * Which player a banner belongs to, from where it appeared. Measured in a real match:
+ * my pon (0.34, 0.75), my tsumo (0.51, 0.62), left riichi (0.26, 0.52), right kan (0.76, 0.60), top ron (0.51, 0.14).
  */
 export function seatAt(cx: number, cy: number): 'me' | 'right' | 'top' | 'left' {
-  if (cy >= 0.62) return 'me';
   if (cy <= 0.3) return 'top';
-  return cx < 0.5 ? 'left' : 'right';
+  if (cy >= 0.68) return 'me';
+  if (cx < 0.3) return 'left';
+  if (cx > 0.68) return 'right';
+  return cy >= 0.5 ? 'me' : 'top';
 }
