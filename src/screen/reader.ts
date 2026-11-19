@@ -354,6 +354,9 @@ export class ScreenReader {
     if (key === 'any_riichi') return me ? 'my_riichi' : 'opponent_riichi';
     if (key === 'any_ron') return me ? 'my_win_ron' : 'opponent_ron';
     if (key === 'any_tsumo') return me ? 'my_win_tsumo' : 'opponent_tsumo';
+    if (key === 'any_pon') return me ? 'my_pon' : 'opponent_call';
+    if (key === 'any_chi') return me ? 'my_chi' : 'opponent_call';
+    if (key === 'any_kan') return me ? 'my_kan' : 'opponent_call';
     return null;
   }
 

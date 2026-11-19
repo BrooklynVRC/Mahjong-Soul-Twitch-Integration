@@ -159,9 +159,13 @@ export function searchAnywhere(img: Gray, t: Searchable): { score: number; cx: n
   return { score: best, cx: (bx + t.w / 2) / img.w, cy: (by + t.h / 2) / img.h };
 }
 
-/** Which player a banner belongs to, from where it appeared (you sit at the bottom). */
+/**
+ * Which player a banner belongs to, from where it appeared. Measured in a real match: your own banners show
+ * low on the screen (often bottom-left, next to your portrait), the top player's near the top, and the left
+ * and right players' around the middle of their side.
+ */
 export function seatAt(cx: number, cy: number): 'me' | 'right' | 'top' | 'left' {
-  const dx = (cx - 0.5) * 16, dy = (cy - 0.5) * 9; // undo the 16:9 stretch
-  if (Math.abs(dy) >= Math.abs(dx)) return dy > 0 ? 'me' : 'top';
-  return dx > 0 ? 'right' : 'left';
+  if (cy >= 0.62) return 'me';
+  if (cy <= 0.3) return 'top';
+  return cx < 0.5 ? 'left' : 'right';
 }

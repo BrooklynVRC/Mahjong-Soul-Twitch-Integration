@@ -30,6 +30,7 @@ test('finds a banner anywhere and tells which seat it belongs to', () => {
   assert.ok(m.score > 0.85, 'found: ' + m.score);
   assert.equal(seatAt(m.cx, m.cy), 'right');
   assert.equal(seatAt(0.5, 0.85), 'me'); assert.equal(seatAt(0.5, 0.15), 'top'); assert.equal(seatAt(0.12, 0.5), 'left');
+  assert.equal(seatAt(0.34, 0.75), 'me', 'my PON banner (real match)'); assert.equal(seatAt(0.26, 0.52), 'left', 'left RIICHI banner (real match)'); assert.equal(seatAt(0.51, 0.14), 'top', 'top RON banner (real match)');
 });
 
 test('BMP round trip', () => {
