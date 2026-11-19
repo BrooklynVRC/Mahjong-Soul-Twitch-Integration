@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { decodeBmpGray, encodeGrayBmp, cropTemplate, prepare, matchScore } = await import('../src/screen/image.ts');
+const { decodeBmpGray, encodeGrayBmp, cropTemplate, prepare, matchScore, shrink, searchable, searchAnywhere, seatAt } = await import('../src/screen/image.ts');
 const { learn, readScore, prepareGlyphs, placement, emptyLayout, segment, classifyChange, looksLikeGameStart } = await import('../src/screen/scores.ts');
 const { KEYS, placeOf } = await import('../src/screen/keys.ts');
 
@@ -15,6 +15,22 @@ function frame(bannerX, bannerY, seed = 1) {
   for (let y = 0; y < 40; y++) for (let x = 0; x < 120; x++) px[(bannerY + y) * w + bannerX + x] = ((x >> 3) % 3 === 0 || y % 13 < 3) ? 250 : 170;
   return { w, h, px };
 }
+
+test('finds a banner anywhere and tells which seat it belongs to', () => {
+  // taught at the bottom (my side), then shown on the right side of a 960x540 picture
+  const big = (bx, by, seed) => { const f = frame(0, 0, seed); const w = 960, h = 540, px = new Uint8Array(w * h);
+    let s = seed; const rnd = () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+    for (let i = 0; i < px.length; i++) px[i] = 40 + rnd() * 60;
+    for (let y = 0; y < 40; y++) for (let x = 0; x < 120; x++) px[(by + y) * w + bx + x] = ((x >> 3) % 3 === 0 || y % 13 < 3) ? 250 : 170;
+    return { w, h, px }; };
+  const taught = big(420, 400, 1), rect = { x: 420 / 960, y: 400 / 540, w: 120 / 960, h: 40 / 540 };
+  const crop = cropTemplate(taught, rect);
+  const sq = searchable(crop.px, crop.w, crop.h, crop.w / rect.w, 480);
+  const m = searchAnywhere(shrink(big(780, 250, 5), 480), sq);
+  assert.ok(m.score > 0.85, 'found: ' + m.score);
+  assert.equal(seatAt(m.cx, m.cy), 'right');
+  assert.equal(seatAt(0.5, 0.85), 'me'); assert.equal(seatAt(0.5, 0.15), 'top'); assert.equal(seatAt(0.12, 0.5), 'left');
+});
 
 test('BMP round trip', () => {
   const f = frame(100, 100);

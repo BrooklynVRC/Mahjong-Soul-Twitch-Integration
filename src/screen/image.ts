@@ -119,3 +119,49 @@ export function cropTemplate(frame: Gray, rect: Rect, max = 96): Gray {
   const f = resample(frame, rect.x * frame.w, rect.y * frame.h, rect.x * frame.w + rw, rect.y * frame.h + rh, tw, th);
   return { w: tw, h: th, px: Uint8Array.from(f, (v) => Math.round(v)) };
 }
+
+/** A template shrunk for searching the whole picture at low resolution. */
+export interface Searchable { w: number; h: number; zero: Float32Array; norm: number; scale: number }
+
+/** Shrinks a frame to `width` for fast whole-picture searches. */
+export function shrink(src: Gray, width: number): Gray {
+  if (src.w <= width) return src;
+  const h = Math.round(src.h * width / src.w);
+  return { w: width, h, px: Uint8Array.from(resample(src, 0, 0, src.w, src.h, width, h), (v) => Math.round(v)) };
+}
+
+/** Prepares a template (taught on a frame `frameWidth` wide) for searching a picture `searchWidth` wide. */
+export function searchable(px: ArrayLike<number>, tw: number, th: number, frameWidth: number, searchWidth: number): Searchable {
+  const scale = searchWidth / frameWidth;
+  const w = Math.max(6, Math.round(tw * scale)), h = Math.max(4, Math.round(th * scale));
+  const src: Gray = { w: tw, h: th, px: Uint8Array.from(px as ArrayLike<number>) };
+  const small = resample(src, 0, 0, tw, th, w, h);
+  const p = prepare(small, w, h);
+  return { w, h, zero: p.zero, norm: p.norm, scale };
+}
+
+/** Finds the best match of the template anywhere in the (shrunk) picture. Returns score and centre (0..1). */
+export function searchAnywhere(img: Gray, t: Searchable): { score: number; cx: number; cy: number } {
+  let best = -1, bx = 0, by = 0;
+  const n = t.w * t.h;
+  const at = (x0: number, y0: number) => {
+    let sum = 0, sum2 = 0, cross = 0;
+    for (let y = 0; y < t.h; y++) {
+      const row = (y0 + y) * img.w + x0, trow = y * t.w;
+      for (let x = 0; x < t.w; x++) { const v = img.px[row + x]; sum += v; sum2 += v * v; cross += v * t.zero[trow + x]; }
+    }
+    const varr = sum2 - (sum * sum) / n;
+    return varr < 1e-3 || t.norm < 1e-3 ? -1 : cross / (Math.sqrt(varr) * t.norm);
+  };
+  // Coarse pass every 3 px, then refine around the best spot.
+  for (let y = 0; y + t.h <= img.h; y += 3) for (let x = 0; x + t.w <= img.w; x += 3) { const s = at(x, y); if (s > best) { best = s; bx = x; by = y; } }
+  for (let y = Math.max(0, by - 3); y <= Math.min(img.h - t.h, by + 3); y++) for (let x = Math.max(0, bx - 3); x <= Math.min(img.w - t.w, bx + 3); x++) { const s = at(x, y); if (s > best) { best = s; bx = x; by = y; } }
+  return { score: best, cx: (bx + t.w / 2) / img.w, cy: (by + t.h / 2) / img.h };
+}
+
+/** Which player a banner belongs to, from where it appeared (you sit at the bottom). */
+export function seatAt(cx: number, cy: number): 'me' | 'right' | 'top' | 'left' {
+  const dx = (cx - 0.5) * 16, dy = (cy - 0.5) * 9; // undo the 16:9 stretch
+  if (Math.abs(dy) >= Math.abs(dx)) return dy > 0 ? 'me' : 'top';
+  return dx > 0 ? 'right' : 'left';
+}

@@ -12,8 +12,8 @@ import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { ObsCapture, WindowCapture, type Source } from './capture.js';
-import { KEYS, keyLabel, placeOf, type Detection, type GameState } from './keys.js';
-import { cropTemplate, decodeBmpGray, encodeGrayBmp, matchScore, prepare, type Gray, type Prepared, type Rect } from './image.js';
+import { BANNER_KEYS, KEYS, keyLabel, placeOf, type Detection, type GameState } from './keys.js';
+import { cropTemplate, decodeBmpGray, encodeGrayBmp, matchScore, prepare, searchAnywhere, searchable, seatAt, shrink, type Gray, type Prepared, type Rect, type Searchable } from './image.js';
 import {
   SEATS, classifyChange, coverage, emptyLayout, learn, looksLikeGameStart, placement, prepareGlyphs, readScore, reinforce,
   type Prepared as GlyphSet, type ScoreLayout, type ScoreRegion, type Seat,
@@ -105,6 +105,8 @@ export class ScreenReader {
   private mtimes: Record<string, number> = {};
   private glyphs: GlyphSet[] = [];
   private prepared = new Map<string, Prepared>();
+  private searchables = new Map<string, Searchable>();
+  private lastEmitVia = new Map<string, string>();
   private source: Source | null = null;
   private sourceKey = '';
   status = 'starting';
@@ -158,7 +160,7 @@ export class ScreenReader {
   }
   private reload(force = false) {
     const c = this.readIfChanged<unknown>('screen-settings.json', force); if (c) this.cfg = merge(SCREEN_DEFAULTS, c);
-    const t = this.readIfChanged<Template[]>('templates.json', force); if (t) { this.templates = t; this.prepared.clear(); }
+    const t = this.readIfChanged<Template[]>('templates.json', force); if (t) { this.templates = t; this.prepared.clear(); this.searchables.clear(); }
     const l = this.readIfChanged<ScoreLayout>('scores.json', force); if (l) { this.layout = { ...emptyLayout(), ...l }; this.glyphs = prepareGlyphs(this.layout); }
     const m = this.readIfChanged<Meta>('calibration.json', force); if (m) this.meta = m;
   }
@@ -224,15 +226,16 @@ export class ScreenReader {
   /** Sends an event to the app, skipping repeats of the same event within 10 s (e.g. banner + scores). */
   private emit(key: string, name: string, score: number | null, frame: Frame | null, via: Logged['via'], note?: string) {
     const now = Date.now();
-    if (via !== 'test' && now - (this.lastEmit.get(key) ?? 0) < 10000) { this.record({ key, name, score, manual: false }, frame, via, 'skipped: already reported'); return; }
-    this.lastEmit.set(key, now);
+    const window = via === 'scores' && this.lastEmitVia.get(key) === 'banner' ? 90000 : 10000;
+    if (via !== 'test' && now - (this.lastEmit.get(key) ?? 0) < window) { this.record({ key, name, score, manual: false }, frame, via, 'skipped: already reported'); return; }
+    this.lastEmit.set(key, now); this.lastEmitVia.set(key, via);
     const d: Detection = { key, name, score, manual: via === 'test' };
     this.record(d, frame, via, note);
     console.log(`[screen] ${keyLabel(key)} (${via}: ${name})${note ? ' ' + note : ''}`);
     this.applyToState(key, name);
     this.o.onDetect(d);
   }
-  test(key: string) { this.emit(key, 'test button', null, this.latest, 'test'); }
+  test(key: string) { this.emit(BANNER_KEYS.includes(key) ? this.bannerEvent(key, 0.5, 0.9) ?? key : key, 'test button', null, this.latest, 'test'); }
 
   private pushState() { this.o.onState?.({ ...this.state, scores: { ...this.state.scores } }); }
 
@@ -303,7 +306,9 @@ export class ScreenReader {
       if (!this.stable || !sameRow(next, this.stable)) { this.stable = next; this.lastChange = now; this.onStable(now); }
     }
     // Group changes for a moment, then decide what happened.
-    if (this.stable && this.settled && !sameRow(this.stable, this.settled) && now - this.lastChange >= sc.settleSeconds * 1000) {
+    const quick = this.stable && this.settled && !sameRow(this.stable, this.settled) ? classifyChange(this.settled, this.stable) : null;
+    const riichiOnly = !!quick && quick.keys.every((k) => k === 'my_riichi' || k === 'opponent_riichi');
+    if (this.stable && this.settled && !sameRow(this.stable, this.settled) && (riichiOnly || now - this.lastChange >= sc.settleSeconds * 1000)) {
       const before = this.settled, after = { ...this.stable };
       const what = classifyChange(before, after);
       const desc = SEATS.filter((s) => before[s] !== after[s]).map((s) => `${s} ${before[s]}→${after[s]}`).join(', ');
@@ -343,12 +348,29 @@ export class ScreenReader {
     } catch (e) { this.source = null; this.status = (e as Error).message; }
   }
 
+  /** Turns a banner placeholder into the real event, using where the banner appeared. */
+  private bannerEvent(key: string, cx: number, cy: number): string | null {
+    const seat = seatAt(cx, cy), me = seat === 'me';
+    if (key === 'any_riichi') return me ? 'my_riichi' : 'opponent_riichi';
+    if (key === 'any_ron') return me ? 'my_win_ron' : 'opponent_ron';
+    if (key === 'any_tsumo') return me ? 'my_win_tsumo' : 'opponent_tsumo';
+    return null;
+  }
+
   private detect(frame: Frame) {
     const c = this.cfg, d = c.detection;
     const started = performance.now(), now = Date.now();
+    let small: Gray | null = null;
     for (const t of this.templates) {
       if (!t.enabled) { this.scores.delete(t.id); continue; }
-      const s = matchScore(frame.gray, t.rect, this.prep(t), d.searchMarginPct);
+      let s: number, where: { cx: number; cy: number } | null = null;
+      if (BANNER_KEYS.includes(t.key)) {
+        small ??= shrink(frame.gray, 480);
+        let sq = this.searchables.get(t.id);
+        if (!sq) { sq = searchable(Buffer.from(t.data, 'base64'), t.tw, t.th, t.frameWidth * (t.tw / Math.max(1, t.rect.w * t.frameWidth)), small.w); this.searchables.set(t.id, sq); }
+        const m = searchAnywhere(small, sq);
+        s = m.score; where = m;
+      } else s = matchScore(frame.gray, t.rect, this.prep(t), d.searchMarginPct);
       this.scores.set(t.id, s);
       if (!c.enabled) continue;
       if (s >= t.threshold) {
@@ -360,6 +382,7 @@ export class ScreenReader {
           if (now - (this.lastFired.get(k) ?? 0) >= t.cooldownSec * 1000) {
             this.lastFired.set(k, now);
             if (t.key === 'game_mode') { if (this.state.mode !== t.name) this.emit(t.key, t.name, s, frame, 'banner'); }
+            else if (where) { const ev = this.bannerEvent(t.key, where.cx, where.cy); if (ev) this.emit(ev, t.name, s, frame, 'banner', `(${seatAt(where.cx, where.cy)} side)`); }
             else this.emit(t.key, t.name, s, frame, 'banner');
           }
         }
