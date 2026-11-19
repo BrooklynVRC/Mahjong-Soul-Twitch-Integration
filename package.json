@@ -1,0 +1,30 @@
+{
+  "name": "mahjong-soul-twitch",
+  "version": "1.0.0",
+  "description": "Twitch integration for Mahjong Soul: chat announcements, OBS overlay, chat commands, auto predictions, and an event feed other apps can use.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test test/userscript.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@twurple/api": "^8.2.0",
+    "@twurple/auth": "^8.2.0",
+    "@twurple/chat": "^8.2.0",
+    "@twurple/eventsub-ws": "^8.2.0",
+    "ws": "^8.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/ws": "^8.18.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

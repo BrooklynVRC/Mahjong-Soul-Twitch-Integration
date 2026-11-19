@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mahjong Soul × Twitch</title>
+<style>
+  :root { --bg:#111319; --card:#1b1e27; --line:#2b2f3b; --text:#e8e9ee; --muted:#9aa0ad; --accent:#9b6bff; --ok:#4fc98a; --bad:#ff6b6b; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.45 "Segoe UI", system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 120px; }
+  h1 { font-size: 22px; margin: 0 0 4px; } h2 { font-size: 16px; margin: 0 0 12px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
+  .status { display:grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+  .stat { background:#14161d; border-radius:8px; padding:10px 12px; } .stat b { display:block; font-size:12px; color:var(--muted); font-weight:500; }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; background:var(--bad); } .dot.on { background:var(--ok); }
+  button, .btn { background:#2a2e3a; color:var(--text); border:1px solid #3a3f4d; border-radius:7px; padding:7px 12px; font:inherit; cursor:pointer; text-decoration:none; display:inline-block; }
+  button:hover, .btn:hover { border-color: var(--accent); }
+  .primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .danger { color: var(--bad); } .small { padding:3px 9px; font-size:13px; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; margin-top: 10px; }
+  details.group { border:1px solid var(--line); border-radius:8px; padding: 6px 12px; margin: 8px 0; background:#161920; }
+  details.group > summary { cursor:pointer; font-weight:600; padding: 4px 0; }
+  .field { display:grid; grid-template-columns: 220px 1fr; gap: 4px 12px; align-items:center; padding: 6px 0; border-top: 1px solid #20232c; }
+  .field .help { grid-column: 2; color: var(--muted); }
+  p.help { color: var(--muted); margin: 4px 0 8px; font-size: 13px; }
+  input[type=text], input[type=password], input[type=number], select, textarea { width:100%; background:#0f1116; color:var(--text); border:1px solid #333846; border-radius:6px; padding:6px 8px; font:inherit; }
+  textarea { resize: vertical; } input[type=checkbox] { width:18px; height:18px; justify-self:start; }
+  .array-item { border-left: 3px solid var(--accent); padding: 4px 0 8px 10px; margin: 8px 0; }
+  .savebar { position:fixed; left:0; right:0; bottom:0; background:#0c0e13ee; border-top:1px solid var(--line); padding: 12px 16px; display:flex; gap:12px; justify-content:center; align-items:center; }
+  #saveMsg { color: var(--muted); }
+  code { background:#0f1116; padding:1px 5px; border-radius:4px; }
+  @media (max-width: 600px) { .field { grid-template-columns: 1fr; } .field .help { grid-column: 1; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Mahjong Soul × Twitch</h1>
+  <p class="sub">Chat announcements, OBS overlay, chat commands and predictions, all driven by your live Mahjong Soul games.</p>
+
+  <section class="card">
+    <h2>Status</h2>
+    <div class="status">
+      <div class="stat"><b>Twitch</b><span id="sTwitch">…</span></div>
+      <div class="stat"><b>Game userscript</b><span id="sGame">…</span></div>
+      <div class="stat"><b>OBS overlays</b><span id="sOverlay">…</span></div>
+      <div class="stat"><b>Apps listening (/events)</b><span id="sEvents">…</span></div>
+      <div class="stat"><b>Current game</b><span id="sRound">…</span></div>
+      <div class="stat"><b>Session</b><span id="sSession">…</span></div>
+    </div>
+    <div class="row">
+      <a class="btn primary" href="/auth/login">Connect Twitch</a>
+      <button onclick="post('/api/twitch/reconnect')">Reconnect</button>
+      <button onclick="post('/api/twitch/disconnect')">Disconnect</button>
+      <a class="btn" href="/overlay" target="_blank">Open overlay</a>
+      <button onclick="if(confirm('Reset session stats?')) post('/api/session/reset')">Reset session</button>
+    </div>
+    <p class="help">Twitch app redirect URL: <code id="redirect">http://localhost:7701/auth/callback</code></p>
+  </section>
+
+  <section class="card">
+    <h2>Test without playing</h2>
+    <p class="help">Fires fake events through the whole pipeline (chat, overlay, forwarding).</p>
+    <div class="row" id="gameTests"></div>
+    <div class="row" id="twitchTests"></div>
+  </section>
+
+  <section class="card">
+    <h2>Settings</h2>
+    <div id="form"></div>
+  </section>
+</main>
+<div class="savebar"><span id="saveMsg">No changes</span><button class="primary" id="saveBtn">Save settings</button></div>
+
+<script src="/ui.js"></script>
+<script>
+  let cfg = null;
+  const $ = (id) => document.getElementById(id);
+  async function post(url, data) {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data || {}) });
+    refresh(); return r.json().catch(() => ({}));
+  }
+  const dot = (on, text) => `<span class="dot ${on ? 'on' : ''}"></span>${text}`;
+  async function refresh() {
+    const s = await fetch('/api/status').then((r) => r.json()).catch(() => null);
+    if (!s) return;
+    $('sTwitch').innerHTML = dot(s.twitch.startsWith('connected'), s.twitch);
+    $('sGame').innerHTML = dot(s.gameClients > 0, s.gameClients ? 'connected' : 'waiting for game tab');
+    $('sOverlay').innerHTML = dot(s.overlayClients > 0, `${s.overlayClients} open`);
+    $('sEvents').innerHTML = dot(s.eventClients > 0, `${s.eventClients} connected`);
+    $('sRound').textContent = s.game.inGame ? (s.game.round || 'starting') : 'not in a game';
+    $('sSession').textContent = `${s.game.session.games} games · avg ${s.game.session.avgPlace}`;
+    $('redirect').textContent = s.redirectUri;
+  }
+  const P = [{ seat: 0, nickname: 'Me' }, { seat: 1, nickname: 'Riichi_Rina' }, { seat: 2, nickname: 'TanyaoTom' }, { seat: 3, nickname: 'DoraDan' }];
+  const gameTests = {
+    'Game start': { type: 'game_start', mySeat: 0, players: P, playerCount: 4 },
+    'Round start': { type: 'round_start', mySeat: 0, label: 'East 2', wind: 'East', round: 2, honba: 1, riichiSticks: 0, scores: [27000, 23000, 25000, 25000], players: P },
+    'I riichi': { type: 'riichi', mySeat: 0, seat: 0, player: 'Me', isMe: true, double: false },
+    'Opponent riichi': { type: 'riichi', mySeat: 0, seat: 2, player: 'TanyaoTom', isMe: false, double: false },
+    'I ron': { type: 'win', mySeat: 0, seat: 0, player: 'Me', isMe: true, method: 'ron', from: 1, fromPlayer: 'Riichi_Rina', dealtInByMe: false, han: 3, fu: 40, yakuman: false, yaku: ['Riichi', 'Pinfu', 'Dora'], points: 7700, deltas: [7700, -7700, 0, 0], scores: [34700, 15300, 25000, 25000] },
+    'I tsumo': { type: 'win', mySeat: 0, seat: 0, player: 'Me', isMe: true, method: 'tsumo', from: null, fromPlayer: null, dealtInByMe: false, han: 4, fu: 30, yakuman: false, yaku: ['Riichi', 'Tsumo', 'Dora 2'], points: 8000, deltas: [8000, -2000, -2000, -4000], scores: [35000, 21000, 23000, 21000] },
+    'I dealt in': { type: 'win', mySeat: 0, seat: 3, player: 'DoraDan', isMe: false, method: 'ron', from: 0, fromPlayer: 'Me', dealtInByMe: true, han: 5, fu: 30, yakuman: false, yaku: ['Riichi', 'Ippatsu', 'Dora 3'], points: 8000, deltas: [-8000, 0, 0, 8000], scores: [19000, 25000, 25000, 33000] },
+    'Yakuman': { type: 'win', mySeat: 0, seat: 0, player: 'Me', isMe: true, method: 'tsumo', from: null, fromPlayer: null, dealtInByMe: false, han: 13, fu: 0, yakuman: true, yaku: ['Kokushi Musou'], points: 32000, deltas: [32000, -16000, -8000, -8000], scores: [57000, 9000, 17000, 17000] },
+    'Draw': { type: 'draw', mySeat: 0, kind: 'exhaustive', reason: 'exhaustive draw', tenpai: [0, 2], tenpaiPlayers: ['Me', 'TanyaoTom'], iAmTenpai: true, deltas: [1500, -1500, 1500, -1500] },
+    'Game end (1st)': { type: 'game_end', mySeat: 0, myPlace: 1, myScore: 41200, playerCount: 4, results: [{ seat: 0, place: 1, score: 41200, player: 'Me', isMe: true }, { seat: 2, place: 2, score: 28000, player: 'TanyaoTom' }, { seat: 1, place: 3, score: 19800, player: 'Riichi_Rina' }, { seat: 3, place: 4, score: 11000, player: 'DoraDan' }] },
+    'Game end (4th)': { type: 'game_end', mySeat: 0, myPlace: 4, myScore: 3100, playerCount: 4, results: [{ seat: 1, place: 1, score: 45000, player: 'Riichi_Rina' }, { seat: 2, place: 2, score: 30000, player: 'TanyaoTom' }, { seat: 3, place: 3, score: 21900, player: 'DoraDan' }, { seat: 0, place: 4, score: 3100, player: 'Me', isMe: true }] },
+  };
+  const twitchTests = {
+    '100 bits': { type: 'bits', amount: 100 }, 'Sub': { type: 'sub', amount: 1 }, 'Gift 5 subs': { type: 'gift', amount: 5 },
+    'Follow': { type: 'follow' }, 'Raid (25)': { type: 'raid', amount: 25 }, 'Redeem': { type: 'redeem', rewardTitle: 'Test Reward' }, 'Chat !stats': { type: 'chat', message: '!stats' },
+  };
+  for (const [n, e] of Object.entries(gameTests)) $('gameTests').append(SettingsUI.el('button', { class: 'small', onclick: () => post('/api/test/game', e) }, n));
+  for (const [n, e] of Object.entries(twitchTests)) $('twitchTests').append(SettingsUI.el('button', { class: 'small', onclick: () => post('/api/test/twitch', e) }, '🟣 ' + n));
+
+  let dirty = false;
+  function changed() { dirty = true; $('saveMsg').textContent = 'Unsaved changes'; }
+  $('saveBtn').onclick = async () => {
+    const r = await post('/api/config', cfg);
+    if (r.ok) { dirty = false; $('saveMsg').textContent = 'Saved ✓'; }
+    else $('saveMsg').textContent = 'Save failed: ' + (r.error || 'unknown');
+  };
+  window.addEventListener('beforeunload', (e) => { if (dirty) e.preventDefault(); });
+  fetch('/api/config').then((r) => r.json()).then(({ config, hints }) => { cfg = config; SettingsUI.render($('form'), cfg, hints, changed); });
+  refresh(); setInterval(refresh, 3000);
+</script>
+</body>
+</html>
