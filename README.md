@@ -8,7 +8,7 @@ A Windows app that **reads your Mahjong Soul game from the screen** (Steam clien
 - **Auto predictions** ("Will I get 1st?" or a 1st–4th pick), opened at game start and resolved from the result. Needs Affiliate or Partner.
 - **Discord Rich Presence**: your profile shows *Playing Mahjong Soul*, with the mode, live place and an elapsed timer, or "In the lobby" with your session stats.
 - **Discord channel messages** through a webhook (optional).
-- **Viewer events for the Lovense app**: bits, subs, gifts, follows, raids, redeems and chat commands, shared locally.
+- **Viewer events for other apps**: bits, subs, gifts, follows, raids, redeems and chat commands, shared locally.
 
 ## Read-only: it never touches the game
 
@@ -27,7 +27,7 @@ Closing the window quits the app.
 
 ## Calibration: done once, for everyone
 
-The apps ship with a **built-in calibration**, and keep it up to date online. Most people never calibrate anything. Calibration is shared by the Twitch and Lovense apps (in `%APPDATA%MahjongSoulScreenReader`), so teaching in either one sets up both.
+The apps ship with a **built-in calibration**, and keep it up to date online. Most people never calibrate anything. Calibration is stored in `%APPDATA%MahjongSoulScreenReader`.
 
 **How it reads the game.** The core is the **four point totals** in the centre panel, read from a full-resolution zoom of that area. Score changes give almost everything, and they don't care about skins or riichi effects:
 
@@ -44,7 +44,7 @@ Your **live placement** and the **lead changes** come from the same numbers.
 
 **Real time.** Scores only change after the result screens, so the built-in calibration also includes the **call banners** (RIICHI, RON, TSUMO, PON, CHI, KAN). The reader finds them anywhere on screen the instant they appear, and **where a banner appears tells it who called**. The scores then confirm a moment later and add what a banner can't show, such as "I dealt in", without repeating events.
 
-**Hand size.** The win-screen titles (**Mangan, Haneman, Baiman, Sanbaiman, Yakuman**) give "my mangan … my yakuman" (or the opponent's). The Lovense app has a separate action for each tier. If a title is missed, the size of the score jump is used instead.
+**Hand size.** The win-screen titles (**Mangan, Haneman, Baiman, Sanbaiman, Yakuman**) give "my mangan … my yakuman" (or the opponent's). If a title is missed, the size of the score jump is used instead.
 
 **In or out of a game.** The main menu (Ranked / Tournament / Friendly Match) and room screens mean you're not in a game. Seeing one ends the current game straight away and reports your final place. With no game board on screen for 20 seconds, the game also counts as over.
 
@@ -93,7 +93,7 @@ Connect to `ws://localhost:7701/events` to receive JSON like `{ "source": "twitc
 ## Files
 
 - `%APPDATA%\MahjongSoulTwitch`: `config.json`, `tokens.json` (Twitch login, **keep private**), `session.json`, `app.log`
-- `%APPDATA%\MahjongSoulScreenReader`: `templates.json` and `scores.json`, shared with the Lovense app
+- `%APPDATA%\MahjongSoulScreenReader`: `templates.json` and `scores.json` (screen reader calibration)
 
 ## Building from source
 
@@ -108,7 +108,5 @@ npm run package      # release\MahjongSoul-Twitch.exe
 ```
 
 **Making a release:** bump `version` in package.json, commit, then push a tag like `v2.0.1`. GitHub Actions builds the app and publishes the release.
-
-Companion app: [Mahjong Soul Lovense Integration](https://github.com/BrooklynVRC/Mahjong-Soul-Lovense-Integration) (Lovense Remote or Intiface Central).
 
 MIT licensed. Not affiliated with Yostar or Mahjong Soul.
