@@ -156,7 +156,7 @@ export const HINTS: Record<string, unknown> = {
   'predictions.windowSec': { label: 'Voting window (seconds)', min: 30, max: 1800 },
   discord: { label: 'Discord' },
   'discord.presence': { label: 'Rich Presence (your Discord profile)', help: 'Shows "Playing …" with your mode, live place and time in game. Create an application at discord.com/developers/applications (its name is what Discord shows after "Playing"), then paste its Application ID. Discord must be running on this PC. ' + PLACEHOLDERS },
-  'discord.presence.clientId': { label: 'Application ID' },
+  'discord.presence.clientId': { label: 'Application ID', help: 'Give the application an App Icon (Developer Portal → General Information → App Icon, e.g. the Mahjong Soul logo). That is the small icon next to your name in voice calls; without one Discord shows a "?".' },
   'discord.presence.lobbyDetails': { label: 'Line 1 (not in a game)' },
   'discord.presence.lobbyState': { label: 'Line 2 (not in a game)' },
   'discord.presence.gameDetails': { label: 'Line 1 (in a game)' },

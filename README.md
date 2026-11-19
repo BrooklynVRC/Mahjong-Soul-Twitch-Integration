@@ -76,7 +76,8 @@ This writes `calibration/default-pack.json` in both repos. Commit and push, and 
   1. Create an application at <https://discord.com/developers/applications>. Its name is what shows after "Playing", e.g. name it *Mahjong Soul*.
   2. Copy its **Application ID** into *Discord → Rich Presence* and turn it on.
   3. Optionally upload an image under *Rich Presence → Art Assets* and type its name in *Image*.
-  4. Discord must be running on the same PC.
+  4. Give the application an **App Icon** (General Information → App Icon), e.g. the Mahjong Soul logo. That's the small icon next to your name in voice calls; without one Discord shows a **question mark**.
+  5. Discord must be running on the same PC.
 
   Both lines of text can be edited. Placeholders: `{mode}` `{place}` `{placeText}` `{elapsed}` `{sessionSummary}` `{games}` `{avgPlace}` and more.
 - **Channel messages**: Channel settings → Integrations → Webhooks → *New Webhook* → *Copy Webhook URL*. Paste it into *Discord → Channel messages* and pick which events to post. They use the same text as the chat messages. **Test Discord webhook** sends a test message.
