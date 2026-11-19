@@ -13,7 +13,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'no
 import { resolve } from 'node:path';
 import { ObsCapture, WindowCapture, type Source } from './capture.js';
 import { BANNER_KEYS, KEYS, TITLE_KEYS, keyLabel, placeOf, tierFromPoints, type Detection, type GameState } from './keys.js';
-import { cropTemplate, decodeBmpGray, encodeGrayBmp, matchScore, prepare, searchAnywhere, searchable, seatAt, shrink, type Gray, type Prepared, type Rect, type Searchable } from './image.js';
+import { cropTemplate, decodeBmpGray, encodeGrayBmp, matchScore, prepare, searchAnywhere, searchBox, searchable, seatAt, shrink, type Gray, type Prepared, type Rect, type Searchable } from './image.js';
 import {
   SEATS, classifyChange, coverage, emptyLayout, learn, looksLikeGameStart, placement, prepareGlyphs, readScore, reinforce,
   type Prepared as GlyphSet, type ScoreLayout, type ScoreRegion, type Seat,
@@ -110,6 +110,8 @@ export class ScreenReader {
   private lastWin: { mine: boolean; ts: number } | null = null;
   private lastTierAt = 0;
   private lastMenuAt = 0;
+  private lastModeCheck = 0;
+  private seatSeen: Partial<Record<Seat, number>> = {};
   private source: Source | null = null;
   private sourceKey = '';
   status = 'starting';
@@ -305,8 +307,11 @@ export class ScreenReader {
       if (changed) this.saveLayout();
     }
     // Only complete readings count (every taught seat readable), so a covered or unreadable box can't fake a change.
-    const taught = SEATS.filter((s) => this.layout.regions[s]);
-    const complete = taught.length >= 2 && taught.every((s) => row[s] !== null);
+    // Seats that show a score in this match (3-player rooms leave one seat empty). A seat counts once it has
+    // been read in the last 2 minutes; every such seat must be readable for a reading to count.
+    for (const seat of SEATS) if (row[seat] !== null) this.seatSeen[seat] = now;
+    const active = SEATS.filter((s) => this.layout.regions[s] && now - (this.seatSeen[s] ?? 0) < 120000);
+    const complete = row.me !== null && active.length >= 3 && active.every((s) => row[s] !== null);
     if (this.candidateCount === Math.max(1, sc.stableFrames) && complete) {
       const next = { ...row };
       if (!this.stable || !sameRow(next, this.stable)) { this.stable = next; this.lastChange = now; this.onStable(now); }
@@ -373,6 +378,7 @@ export class ScreenReader {
     if (key === 'any_pon') return me ? 'my_pon' : 'opponent_call';
     if (key === 'any_chi') return me ? 'my_chi' : 'opponent_call';
     if (key === 'any_kan') return me ? 'my_kan' : 'opponent_call';
+    if (key === 'any_kita') return me ? 'my_kita' : 'opponent_kita';
     return null;
   }
 
@@ -382,6 +388,7 @@ export class ScreenReader {
     let small: Gray | null = null;
     for (const t of this.templates) {
       if (!t.enabled) { this.scores.delete(t.id); continue; }
+      if (t.key === 'game_mode') continue; // read from the corner text by readMode()
       let s: number, where: { cx: number; cy: number } | null = null;
       const isTitle = TITLE_KEYS.includes(t.key);
       if (BANNER_KEYS.includes(t.key) || isTitle) {
@@ -421,6 +428,7 @@ export class ScreenReader {
       }
     }
     if (c.enabled) this.readScores(frame);
+    if (c.enabled && now - this.lastModeCheck > 2000) { this.lastModeCheck = now; this.readMode(frame); }
     this.analysisMs = this.analysisMs * 0.8 + (performance.now() - started) * 0.2;
   }
   private prep(t: Template) {
@@ -455,6 +463,27 @@ export class ScreenReader {
     const ok = this.status.startsWith('capturing');
     const delay = Math.max(20, 1000 / Math.max(1, c.fps) - (Date.now() - started));
     setTimeout(() => void this.loop(), ok ? delay : 1500);
+  }
+
+  /**
+   * Game mode from the corner text shown during a match ("Bronze Room · 3-Player East"). Each part is its own
+   * "Game mode" template named after its text; the parts found are joined left to right, so new rooms and
+   * lengths combine without a template for every combination.
+   */
+  private readMode(frame: Frame) {
+    const parts = this.templates.filter((t) => t.enabled && t.key === 'game_mode');
+    if (!parts.length) return;
+    const box = { x0: 0, y0: 0.08, x1: 0.45, y1: 0.28 };
+    const found: { name: string; cx: number }[] = [];
+    for (const t of parts) {
+      const m = searchBox(frame.gray, this.prep(t), box);
+      this.scores.set(t.id, m.score);
+      if (m.score >= t.threshold) found.push({ name: t.name.trim(), cx: m.cx });
+    }
+    if (!found.length) return;
+    found.sort((a, b) => a.cx - b.cx);
+    const name = found.length > 1 ? `${found[0].name} · ${found.slice(1).map((f) => f.name).join(' ')}` : found[0].name;
+    if (name !== this.state.mode) this.emit('game_mode', name, null, frame, 'banner', '(corner text)');
   }
 
   /** Saves the last few seconds (F8 in the app window), to teach from later. */

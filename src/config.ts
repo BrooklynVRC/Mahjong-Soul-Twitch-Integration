@@ -23,6 +23,8 @@ const TEXT: Record<string, [boolean, string]> = {
   my_pon: [false, 'Pon!'],
   my_chi: [false, 'Chi!'],
   my_kan: [true, 'KAN!'],
+  my_kita: [false, 'Kita!'],
+  opponent_kita: [false, 'An opponent pulled a north.'],
   opponent_call: [false, 'An opponent called a tile.'],
   my_win_ron: [true, 'RON! I won the hand.'],
   my_win_tsumo: [true, 'TSUMO! I won the hand.'],

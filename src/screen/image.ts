@@ -170,3 +170,23 @@ export function seatAt(cx: number, cy: number): 'me' | 'right' | 'top' | 'left' 
   if (cx > 0.68) return 'right';
   return cy >= 0.5 ? 'me' : 'top';
 }
+
+/** Best match of a (full-size) template inside a box of the picture (fractions). For small text. */
+export function searchBox(img: Gray, t: Prepared, box: { x0: number; y0: number; x1: number; y1: number }): { score: number; cx: number } {
+  const n = t.tw * t.th;
+  const X0 = Math.max(0, Math.floor(box.x0 * img.w)), Y0 = Math.max(0, Math.floor(box.y0 * img.h));
+  const X1 = Math.min(img.w - t.tw, Math.ceil(box.x1 * img.w) - t.tw), Y1 = Math.min(img.h - t.th, Math.ceil(box.y1 * img.h) - t.th);
+  let best = -1, bx = X0, by = Y0;
+  const at = (x0: number, y0: number) => {
+    let sum = 0, sum2 = 0, cross = 0;
+    for (let y = 0; y < t.th; y++) {
+      const row = (y0 + y) * img.w + x0, trow = y * t.tw;
+      for (let x = 0; x < t.tw; x++) { const v = img.px[row + x]; sum += v; sum2 += v * v; cross += v * t.zero[trow + x]; }
+    }
+    const varr = sum2 - (sum * sum) / n;
+    return varr < 1e-3 || t.norm < 1e-3 ? -1 : cross / (Math.sqrt(varr) * t.norm);
+  };
+  for (let y = Y0; y <= Y1; y += 2) for (let x = X0; x <= X1; x += 2) { const s = at(x, y); if (s > best) { best = s; bx = x; by = y; } }
+  for (let y = Math.max(Y0, by - 1); y <= Math.min(Y1, by + 1); y++) for (let x = Math.max(X0, bx - 1); x <= Math.min(X1, bx + 1); x++) { const s = at(x, y); if (s > best) { best = s; bx = x; by = y; } }
+  return { score: best, cx: (bx + t.tw / 2) / img.w };
+}
