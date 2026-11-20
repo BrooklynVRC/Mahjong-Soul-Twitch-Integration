@@ -143,7 +143,7 @@ sealed class MainForm : Form
         web.Visible = false; status.Visible = true; status.Text = "Closing…";
         try
         {
-            // Lets the app shut down cleanly (the Lovense app stops the toy first).
+            // Lets the app shut down cleanly.
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
             await http.PostAsync((url ?? "http://localhost/") + "api/shutdown", null);
         }

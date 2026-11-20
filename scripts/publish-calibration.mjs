@@ -1,7 +1,7 @@
 // Turns the calibration on this PC into the built-in calibration for everyone.
 //   npm run calibration:publish
 // Reads %APPDATA%\MahjongSoulScreenReader (what you taught in either app) and writes
-// calibration/default-pack.json here and in the Lovense repo next to this one. Commit + push afterwards:
+// calibration/default-pack.json. Commit + push afterwards:
 // apps with "Get calibration updates online" pick it up right away, and the next release bundles it.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -21,7 +21,7 @@ const pack = {
   templates, scores,
 };
 const digits = [...new Set(scores.glyphs.map((g) => g.ch))].sort().join('');
-for (const dir of [root, resolve(root, '..', 'mahjong-soul-lovense')]) {
+for (const dir of [root]) {
   if (!existsSync(resolve(dir, 'calibration'))) continue;
   writeFileSync(resolve(dir, 'calibration/default-pack.json'), JSON.stringify(pack, null, 2) + '\n');
   console.log('wrote', resolve(dir, 'calibration/default-pack.json'));
