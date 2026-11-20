@@ -1,0 +1,33 @@
+# Keeps every release's notes free of companion-app references (older releases were written before they were removed).
+# Runs when this file changes, after every release build, or by hand from the Actions tab.
+name: Clean release notes
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  push:
+    branches: [main]
+    paths: ['.github/workflows/clean-release-notes.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clean every release's notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          for tag in $(gh release list -R "$REPO" --limit 100 --json tagName -q '.[].tagName'); do
+            gh release view "$tag" -R "$REPO" --json body -q .body > body.md
+            if grep -qi 'lovense' body.md; then
+              sed -E 's/; templates are shared with the Lovense app in /; screen reader calibration in /' body.md | grep -vi 'lovense' > clean.md || true
+              gh release edit "$tag" -R "$REPO" --notes-file clean.md
+              echo "cleaned $tag"
+            fi
+          done
